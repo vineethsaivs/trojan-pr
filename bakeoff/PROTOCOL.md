@@ -128,3 +128,13 @@ target as FAIL instead of ERROR (`_Timeout` caught by the oracles' generic handl
 harness is not changed. The judge on VM1, which recomputes every status, now maps any check whose
 detail carries `_Timeout` to ERROR (kind timeout), so a slow or hanging target can never count as a
 detection. The live (non-frozen) harness has the direct fix.
+
+## Amendment 3 (Sat Sep 26 20:04 PDT, before any held-out Sentinel run)
+
+On the dev cases the planner's plans failed validation or bound wrongly for mechanical reasons: bare
+values where the schema needs typed args (`5` for `{"int": 5}`), the explanation written into the
+`pattern` field, and a method target `path:Class.method` given with constructor args. Planner v1.1
+normalizes these before validation (control plane only; the frozen harness is unchanged); a wrong
+guess ends as ERROR, never as a detection. All 24 Sentinel runs are rerun fresh under planner v1.1;
+the 9 earlier runs on dev cases (ds-8313, ds-8533, st-3921, ds-8334) stay in the database, labeled
+by planner version, and are reported as superseded. No held-out case had been run.

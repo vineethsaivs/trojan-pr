@@ -45,9 +45,11 @@ def queue(harness="harness-frozen-v1"):
     conn = db.connect()
     for which in ("intro", "fix"):
         for cid in H:
+            from plumbline.planner import PLANNER_VERSION
             rows = conn.execute("SELECT json_extract(plan, '$.errors') FROM runs WHERE case_id=? AND id LIKE ? "
-                                "AND status='done' AND json_extract(subject, '$.harness')=?",
-                                (cid, f"{cid}-{which}-%", harness)).fetchall()
+                                "AND status='done' AND json_extract(subject, '$.harness')=? "
+                                "AND json_extract(subject, '$.planner_version')=?",
+                                (cid, f"{cid}-{which}-%", harness, PLANNER_VERSION)).fetchall()
             timeouts = sum(1 for (e,) in rows if e and "Timeout" in e)
             if rows and not (timeouts == len(rows) == 1):   # a planner-timeout-only run is rerun once (amendment 1)
                 continue

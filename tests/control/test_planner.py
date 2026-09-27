@@ -24,3 +24,20 @@ p = run([json.dumps(BAD), json.dumps(GOOD)]); assert p["source"] == "planner_rep
 p = run([None, None, None, None]); assert p["source"] == "prepass_default" and [c["id"] for c in p["checks"]] == ["m1", "m2"], p
 p = run([json.dumps(BAD), json.dumps(BAD), json.dumps(BAD), json.dumps(BAD)]); assert p["source"] == "prepass_default" and p["rejected"], p["source"]
 print("test_planner: valid, repaired, garbage -> prepass_default, invalid-only -> rejected listed: PASS")
+
+# v1.1 normalization: the exact shapes deepseek produced on ds-8533 and st-3921 (Sat 20:05)
+T = "sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py"
+PRE2 = [{"file": T, "symbols": ["GlobalOrthogonalRegularizationLoss.compute_gor"], "patterns": [], "families": ["edge_sweep"]}]
+raw = {"summary": "s", "declared_behavior_change": False, "checks": [
+    {"id": "c1", "family": "edge_sweep", "adapter": "call",
+     "call": {"target": f"{T}:GlobalOrthogonalRegularizationLoss.compute_gor", "construct": {"model": None, "mean_weight": 1.0},
+              "args": [{"shape": [4, 8], "dist": "randn"}], "kwargs": {"steps": 5}},
+     "params": {"edges": ["batch_1"]}, "pattern": "A batch of 1 must stay finite: this is the zero denominator path.", "why": ""}]}
+errs = planner._errors(raw, {T}, None)
+assert not errs, errs
+c = raw["checks"][0]["call"]
+assert c["target"].endswith(":GlobalOrthogonalRegularizationLoss") and c["method"] == "compute_gor", c
+assert c["construct"] == {"model": {"none": True}, "mean_weight": {"float": 1.0}} and c["kwargs"] == {"steps": {"int": 5}}, c
+assert c["args"] == [{"tensor": {"shape": [4, 8], "dist": "randn"}}] and raw["checks"][0]["pattern"] == "none"
+assert raw["checks"][0]["why"].startswith("A batch of 1"), raw["checks"][0]["why"]
+print("test_planner: v1.1 normalization of bare args, Cls.method + construct, prose pattern: PASS")

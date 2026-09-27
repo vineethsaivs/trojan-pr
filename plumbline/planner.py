@@ -12,6 +12,7 @@ SCHEMA = json.load(open(os.path.join(HERE, "plan_schema.json")))
 # glm-5.3 and glm-5.3-flash spend the whole token budget reasoning on this prompt (8k: no answer;
 # glm-5.3 at 24k: 129 s, no answer; NOTES Sat 20:15), so the plan's third fallback leads.
 MODELS = ("deepseek-v4-flash-0731", "deepseek-v4-flash-0731")   # second = fresh conversation
+PLANNER_VERSION = "v1.1"   # v1.1: mechanical normalization of typed args before validation (amendment 3)
 FAMS_BY_ADAPTER = {"call": {"bounds", "monotonic", "finite_extremes", "dtype_shadow", "no_mutation",
                             "edge_sweep", "reference", "decomposition"},
                    "grad_norm": {"decomposition", "reference"}}
@@ -99,6 +100,65 @@ def semantic_errors(plan, touched_files, surface=None):
     return errs
 
 
+ARG_KINDS = {"tensor", "list", "float", "int", "str", "bool", "none", "sweep", "dict", "items", "object"}
+PATTERNS = set(SCHEMA["$defs"]["check"]["properties"]["pattern"]["enum"])
+
+
+def _arg(v):
+    """Wrap a bare value into the typed Arg grammar. Mechanical only: never changes what runs."""
+    if isinstance(v, dict):
+        if len(v) == 1 and next(iter(v)) in ARG_KINDS:
+            (k, x), = v.items()
+            if k == "dict" and isinstance(x, dict):
+                return {"dict": {n: _arg(a) for n, a in x.items()}}
+            if k == "object" and isinstance(x, dict):
+                return {"object": {n: _arg(a) for n, a in x.items()}}
+            if k == "items" and isinstance(x, list):
+                return {"items": [_arg(a) for a in x]}
+            return v
+        if "shape" in v:
+            return {"tensor": v}
+        return {"dict": {n: _arg(a) for n, a in v.items()}}
+    if isinstance(v, bool):
+        return {"bool": v}
+    if isinstance(v, int):
+        return {"int": v}
+    if isinstance(v, float):
+        return {"float": v}
+    if v is None:
+        return {"none": True}
+    if isinstance(v, str):
+        return {"str": v}
+    if isinstance(v, list):
+        return {"items": [_arg(a) for a in v]}
+    return v
+
+
+def _normalize(c):
+    call, p = c.get("call"), c.get("params")
+    if isinstance(call, dict):
+        for k in ("construct", "kwargs"):
+            if isinstance(call.get(k), dict):
+                call[k] = {n: _arg(a) for n, a in call[k].items()}
+        if isinstance(call.get("args"), list):
+            call["args"] = [_arg(a) for a in call["args"]]
+        t = call.get("target", "")
+        if ":" in t and "construct" in call and "method" not in call:   # "path:Cls.method" + construct
+            path, qual = t.split(":", 1)
+            parts = qual.split(".")
+            if len(parts) >= 2 and parts[-2][:1].isupper():
+                call["target"], call["method"] = f"{path}:{'.'.join(parts[:-1])}", parts[-1]
+    if isinstance(p, dict):
+        if isinstance(p.get("cases"), list):
+            p["cases"] = [{n: _arg(a) for n, a in case.items()} if isinstance(case, dict) else case for case in p["cases"]]
+        if isinstance(p.get("config"), dict):
+            p["config"] = {n: _arg(a) for n, a in p["config"].items()}
+    if c.get("pattern") not in PATTERNS:                              # prose in the pattern field
+        if isinstance(c.get("pattern"), str) and not c.get("why"):
+            c["why"] = c["pattern"][:240]
+        c["pattern"] = "none"
+
+
 def _parse(msg):
     if msg.tool_calls:
         return json.loads(msg.tool_calls[0].function.arguments)
@@ -118,6 +178,7 @@ def _errors(plan, touched_files, surface):
     for c in plan["checks"] if isinstance(plan["checks"], list) else []:
         if isinstance(c, dict):
             c.update({k: _unstr(c[k]) for k in ("call", "params") if k in c})
+            _normalize(c)
     plan["summary"] = str(plan.get("summary", ""))[:400]        # display-only text: trim, never reject
     for c in plan.get("checks", []) if isinstance(plan.get("checks"), list) else []:
         if isinstance(c, dict) and isinstance(c.get("why"), str):
@@ -174,7 +235,7 @@ def make_plan(diff, description, pre, surface=None, config=None, cap_s=45, model
         if plan or time.time() > deadline - 5:
             break
     added = plan["checks"] if plan else []
-    out = {"source": source, "model": model if plan else None, "latency_ms": int((time.time() - t0) * 1000),
+    out = {"source": source, "planner_version": PLANNER_VERSION, "model": model if plan else None, "latency_ms": int((time.time() - t0) * 1000),
            "summary": plan["summary"] if plan else "planner unavailable: mandatory checks only",
            "declared_behavior_change": bool(plan and plan["declared_behavior_change"]),
            "checks": mandatory + added, "mandatory_ids": [c["id"] for c in mandatory],
