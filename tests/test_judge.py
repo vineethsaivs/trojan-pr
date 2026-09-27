@@ -21,6 +21,9 @@ head = cells([lying], {"c1"})
 assert decide(base["c1"], head["c1"]) == "detected"
 assert recompute({"status": "PASS", "metric": "nan", "threshold": 1.0}) == "FAIL"
 assert recompute({"status": "PASS", "metric": None, "threshold": None}) == "PASS"   # categorical
+t = cells([{"ev": "check", "id": "c1", "status": "FAIL", "detail": "raised at 0: _Timeout: "}], {"c1"})["c1"]
+assert t["status"] == "ERROR" and t["kind"] == "timeout"        # frozen-v1 timeout is never a detection
+assert decide({"status": "PASS"}, t) == "inconclusive"
 
 # tampering: a duplicate id (code under test printing a fake PASS) becomes ERROR
 dup = cells([{"ev": "check", "id": "c1", "status": "FAIL", "metric": 1.0, "threshold": 0.1},

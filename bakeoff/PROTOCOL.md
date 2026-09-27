@@ -120,3 +120,11 @@ held 8 concurrent calls to the same model (recorded error: `APITimeoutError`). T
 demo limit; each reviewer call is allowed 300 s. For batch runs the planner cap is raised to 180 s.
 A run whose only failure is a planner timeout is rerun once; the timed-out runs stay in the database
 and are reported next to their reruns. Nothing else changes.
+
+## Amendment 2 (Sat Sep 26 20:02 PDT)
+
+An acceptance test found that `harness-frozen-v1` reports a per-check timeout raised inside the
+target as FAIL instead of ERROR (`_Timeout` caught by the oracles' generic handler). The frozen
+harness is not changed. The judge on VM1, which recomputes every status, now maps any check whose
+detail carries `_Timeout` to ERROR (kind timeout), so a slow or hanging target can never count as a
+detection. The live (non-frozen) harness has the direct fix.

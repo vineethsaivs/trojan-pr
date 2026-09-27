@@ -22,7 +22,7 @@ def emit(**k):
     _OUT.write(json.dumps(k, default=str) + "\n")
 
 
-class _Timeout(Exception):
+class _Timeout(BaseException):  # not Exception: oracles' _call must not turn a timeout into a FAIL
     pass
 
 

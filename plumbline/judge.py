@@ -19,8 +19,8 @@ def _num(x):
 
 def recompute(line):
     """Status from the numbers when both exist; a non-finite metric is a FAIL."""
-    if line.get("status") == "ERROR":
-        return "ERROR"
+    if line.get("status") == "ERROR" or "_Timeout" in str(line.get("detail")):
+        return "ERROR"      # harness-frozen-v1 reports a per-check timeout inside the target as FAIL
     m, t = _num(line.get("metric")), _num(line.get("threshold"))
     if m is not None and t is not None:
         return "PASS" if math.isfinite(m) and m <= t else "FAIL"
@@ -41,7 +41,8 @@ def cells(lines, plan_ids):
             out[cid] = {**l, "status": "ERROR", "kind": "tamper", "detail": "duplicate or unknown check id"}
             continue
         seen.add(cid)
-        out[cid] = {**l, "status": recompute(l), "kind": (l.get("witness") or {}).get("kind")}
+        out[cid] = {**l, "status": recompute(l),
+                    "kind": "timeout" if "_Timeout" in str(l.get("detail")) else (l.get("witness") or {}).get("kind")}
     return out
 
 
