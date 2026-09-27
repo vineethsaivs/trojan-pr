@@ -1,0 +1,11 @@
+{"_label": "Why Sentinel did not block each introducing PR (pre-registered run, harness-frozen-v2). Written after the results from a read-only diagnosis of each run's plan and cells (plumbline.db on VM1); nothing here changes a verdict.",
+ "st-3868": {"verdict": "PASS", "reason": "Miss. The only check that ran cleanly was a no-mutation check, which cannot see the wrong default similarity function; the checks that measure the loss errored on a mis-bound argument."},
+ "st-3921": {"verdict": "NOT COVERED", "reason": "The blind plan picked the right edge (a batch of 1), but it left out the loss's required model argument, so every check errored before reaching compute_gor. Post-hoc amendment 5 re-ran the same plan: BLOCK."},
+ "ds-8533": {"verdict": "NOT COVERED", "reason": "The planner copied a placeholder ('key') from its own instructions as the output name, so every check errored. The fp16 overflow also needs inputs near 1e4, which the plan never chose."},
+ "ray-65747": {"verdict": "NOT COVERED", "reason": "The planner sent its checks as a malformed string four times, so no check ran. Reaching the bug needs small integer hyperparameters, which the plan did not target."},
+ "st-4019": {"verdict": "NOT COVERED", "reason": "The planner swapped two same-typed arguments (labels and embeddings), and its inputs could not reach the overflow."},
+ "ray-65535": {"verdict": "NOT COVERED", "reason": "The checks bound to an unbound method with no instance. The bug breaks grid membership (a value must be a multiple of q), which no oracle family states."},
+ "ray-65790": {"verdict": "NOT COVERED", "reason": "Every check errored on a mis-bound argument. The function needs finished-trial fixtures; on a fresh object it returns empty lists."},
+ "zoo-1286": {"verdict": "NOT COVERED", "reason": "The module does not load in the sandbox (torch.compile runs at import under the dependency stubs), and the plan never targeted the normalizer branch."},
+ "unsloth-11337": {"verdict": "NOT COVERED", "reason": "The file imports from a separate repo (unsloth_zoo) at load time, so it cannot load alone. A check needs the paired commit and a trainer fixture."},
+ "unsloth-11470": {"verdict": "NOT COVERED", "reason": "Needs transformers and trl, which the sandbox image does not have. Pre-registered to count as a miss."}}
