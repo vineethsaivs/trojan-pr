@@ -1,0 +1,31 @@
+{
+ "ds-8313": [
+  {"id": "c1", "family": "decomposition", "adapter": "grad_norm",
+   "call": {"target": "deepspeed/runtime/utils.py:clip_grad_norm_", "kwargs": {"max_norm": {"float": 1000000.0}}},
+   "params": {"pieces": 2, "combine": "same", "p": [2, 1, 3]}, "pattern": "power_root_order", "why": "split invariance"},
+  {"id": "c2", "family": "reference", "adapter": "grad_norm",
+   "call": {"target": "deepspeed/runtime/utils.py:clip_grad_norm_", "kwargs": {"max_norm": {"float": 1.0}}},
+   "params": {"ref": "torch.clip_grad_norm_", "cases": [{"norm_type": {"float": 2.0}}, {"norm_type": {"float": 1.0}}, {"norm_type": {"float": 3.0}}]},
+   "pattern": "power_root_order", "why": "same maths as torch"}],
+ "ds-8533": [
+  {"id": "c1", "family": "finite_extremes", "adapter": "call",
+   "call": {"target": "deepspeed/runtime/zero/muon/original_muon.py:zeropower_via_gram_newtonschulz",
+            "args": [{"tensor": {"shape": [8, 32], "dist": "randn", "scaled": true}}, {"int": 5}]},
+   "params": {"scales": [1.0, 1000.0, 100000.0], "expect": "scale_invariant", "compute_dtype": "float16"},
+   "pattern": "narrowing_cast", "why": "orthogonalisation is scale invariant"}],
+ "st-3921": [
+  {"id": "c1", "family": "edge_sweep", "adapter": "call",
+   "call": {"target": "sentence_transformers/sentence_transformer/losses/global_orthogonal_regularization.py:GlobalOrthogonalRegularizationLoss",
+            "construct": {"model": {"none": true}}, "method": "compute_gor",
+            "args": [{"tensor": {"shape": [4, 8], "dist": "randn"}}]},
+   "params": {"edges": ["batch_1"]}, "pattern": "zero_denominator", "why": "batch of 1"}],
+ "ds-8334": [
+  {"id": "c1", "family": "bounds", "adapter": "call",
+   "call": {"target": "deepspeed/runtime/data_pipeline/curriculum_scheduler.py:CurriculumScheduler",
+            "construct": {"config": {"dict": {"min_difficulty": {"int": 8}, "max_difficulty": {"int": 1024},
+              "schedule_type": {"str": "fixed_linear"},
+              "schedule_config": {"dict": {"total_curriculum_step": {"int": 100}, "difficulty_step": {"int": 16}}}}}},
+            "method": "get_difficulty", "args": [{"sweep": true}]},
+   "params": {"sweep": {"start": 0, "stop": 150}, "lo": {"config": "min_difficulty"}, "hi": {"config": "max_difficulty"}},
+   "pattern": "one_sided_clamp", "why": "difficulty within config bounds"}]
+}

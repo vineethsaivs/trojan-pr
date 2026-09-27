@@ -41,6 +41,8 @@ def _call(fn, *a, **k):
     (ValueError with a message) is behaviour, an arithmetic exception is a bug."""
     try:
         return "ok", fn(*a, **k)
+    except HarnessError:  # adapter-side binding failure: ERROR, never a detection
+        raise
     except DECLARED as e:
         return "declared", f"{type(e).__name__}: {e}"
     except BINDING as e:

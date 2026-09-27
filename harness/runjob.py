@@ -6,6 +6,7 @@ import torch
 from extract import Loader
 from shims import SHIMS
 import oracles as O
+import adapters
 import gold
 
 
@@ -37,11 +38,11 @@ def load_module(job):
         L.uninstall()
 
 
-def run_check(chk, mod):
-    """One check spec -> list of Verdicts. Only gold plans (selected by case id) in block C."""
+def run_check(chk, mod, job):
+    """One check spec -> list of Verdicts: a gold plan by case id, or a typed plan check."""
     if "gold" in chk:
         return gold.PLANS[chk["gold"]](mod)
-    raise O.HarnessError(f"unsupported check spec: {sorted(chk)}")
+    return adapters.run_plan_check(chk, mod, job)
 
 
 def main(path):
@@ -63,14 +64,15 @@ def main(path):
     for chk in job["checks"]:
         t0 = time.time()
         signal.alarm(int(job.get("per_check_timeout_s", 20)))
+        fam = chk.get("family", "harness")
         try:
-            vs = run_check(chk, mod)
+            vs = run_check(chk, mod, job)
         except _Timeout:
-            vs = [O.Verdict("harness", "ERROR", detail="timeout")]
+            vs = [O.Verdict(fam, "ERROR", detail="timeout", witness={"kind": "timeout"})]
         except O.HarnessError as e:
-            vs = [O.Verdict("harness", "ERROR", detail=str(e))]
+            vs = [O.Verdict(fam, "ERROR", detail=str(e), witness={"kind": getattr(e, "kind", "binding")})]
         except Exception as e:
-            vs = [O.Verdict("harness", "ERROR", detail=f"{type(e).__name__}: {e}")]
+            vs = [O.Verdict(fam, "ERROR", detail=f"{type(e).__name__}: {e}", witness={"kind": "harness"})]
         finally:
             signal.alarm(0)
         ms = int((time.time() - t0) * 1000)

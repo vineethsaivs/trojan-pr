@@ -9,6 +9,8 @@ deploy-sandbox:
 
 deploy-control:
 	ssh pl-control 'mkdir -p /opt/plumbline'
-	$(RSYNC) plumbline harness sandboxd infra Makefile pl-control:/opt/plumbline/
+	$(RSYNC) plumbline harness sandboxd infra corpus Makefile pl-control:/opt/plumbline/
+	(git rev-parse HEAD; git diff --quiet HEAD || echo dirty) | tr '\n' ' ' | ssh pl-control 'cat > /opt/plumbline/GIT_SHA'
+	rsync -az bakeoff/inputs/ pl-control:/var/lib/plumbline/inputs/
 
 .PHONY: deploy-sandbox deploy-control

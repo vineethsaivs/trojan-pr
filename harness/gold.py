@@ -61,8 +61,10 @@ def ds_8533(m):
     torch.manual_seed(0)
     G = torch.randn(8, 32)
     fn = lambda g: m.zeropower_via_gram_newtonschulz(g, 5)
-    # fp16 iteration: output is an approximate polar factor; allow fp16-level drift
-    return [O.finite_extremes(fn, lambda s: (G * s,), [1.0, 1e3, 1e5], expect="scale_invariant", rtol=5e-2)]
+    # fp16 iteration over 5 steps: derived budget 8 * eps(fp16) * sqrt(5) = 1.7e-2 (PLAN 5.9;
+    # the prototype's 5e-2 was wider than the arithmetic explains)
+    return [O.finite_extremes(fn, lambda s: (G * s,), [1.0, 1e3, 1e5], expect="scale_invariant",
+                              rtol=8 * O.EPS[torch.float16] * math.sqrt(5))]
 
 
 def ray_65747(m):
