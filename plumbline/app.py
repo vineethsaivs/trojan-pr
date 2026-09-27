@@ -65,12 +65,14 @@ def _statuses(conn, run_id):
 def index(request: Request):
     conn = db.connect()
     runs, nums = _eval_runs(conn), _numbers()
+    ph = (((nums.get("sentinel") or {}).get("posthoc_a5") or {}).get("runs") or {}).get("intro") or {}
     rows = []
     for c in _cases():
         intro, fix = runs.get((c["id"], "intro")), runs.get((c["id"], "fix"))
         rows.append({**c, "sentinel": {"run_id": intro["id"], "verdict": intro["verdict"], "statuses": _statuses(conn, intro["id"])} if intro else None,
                      "sentinel_fix": {"run_id": fix["id"], "verdict": fix["verdict"]} if fix else None,
-                     "reviewer": (nums.get("reviewer_by_case") or {}).get(c["id"])})
+                     "reviewer": (nums.get("reviewer_by_case") or {}).get(c["id"]),
+                     "posthoc": ph.get(c["id"]) if intro and ph.get(c["id"]) and ph[c["id"]]["run_id"] != intro["id"] else None})
     ev = [r for r in rows if r["split"] in ("dev", "held-out")]
     totals = {"n": len(ev), "ran": sum(1 for r in ev if r["sentinel"]),
               "blocked": sum(1 for r in ev if r["sentinel"] and r["sentinel"]["verdict"] == "BLOCK"),

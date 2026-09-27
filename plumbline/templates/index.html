@@ -31,12 +31,12 @@
       <span class="tag">{{ SPLIT.get(r.get("split"), r.get("split") or "unknown") }}</span>
     </th>
     <td>{% if r.get("days_alive") is not none %}shipped, lived <span class="num">{{ r.days_alive }}</span> days{% else %}<span class="unknown">unknown: no merge record</span>{% endif %}</td>
-    <td>{% if r.get("reviewer") is none %}<span class="unknown">pending adjudication</span>{% elif r.reviewer.get("label") %}{{ r.reviewer.label }}{% else %}<code class="json">{{ r.reviewer|tojson }}</code>{% endif %}</td>
+    <td class="rev">{% if r.get("split") not in ["dev", "held-out"] %}<span class="unknown">not in the bake-off</span>{% elif r.get("reviewer") is none %}<span class="unknown">pending adjudication</span>{% else %}{% set k = r.reviewer.caught_runs %}<span class="{{ 'caught' if k else 'unknown' }}">caught in <span class="num">{{ k }}</span> of <span class="num">{{ r.reviewer.runs }}</span> runs</span>{% endif %}</td>
     {% if s %}
       {% for l in LABELS %}{% set st = (s.get("statuses") or {}).get(l) %}
       <td class="c">{% if st %}<span class="st st-{{ st|lower }}">{{ st }}</span>{% else %}<span class="st st-na">n/a</span>{% endif %}</td>
       {% endfor %}
-      <td class="c">{{ verdict(s.get("verdict"), "/runs/" ~ s.run_id) }}</td>
+      <td class="c">{{ verdict(s.get("verdict"), "/runs/" ~ s.run_id) }}{% if r.get("posthoc") %}<a class="posthoc" href="/runs/{{ r.posthoc.run_id }}">post-hoc: {{ r.posthoc.verdict }}</a>{% endif %}</td>
     {% else %}
       <td colspan="5" class="c"><span class="unknown">not run yet</span></td>
     {% endif %}
@@ -55,6 +55,8 @@
 {% block main %}
 <h1>Cases</h1>
 <p class="lead">{{ rows|length }} silent math bugs that merged, shipped, and were later fixed. The first {{ n }} are the eval set. Dev rows are in-sample.</p>
+{% set lb = (numbers.get("reviewer") or {}).get("labels") %}
+{% if lb %}<p class="provenance">AI reviewer: <span class="mono">deepseek-v4-flash</span> on Vultr, 3 runs per PR, scored blind by the pre-registered rubric ({{ lb.human }} outputs labelled by hand, {{ lb.llm }} by an LLM judge). The bug list in its prompt came from my own fixes, so it is in-sample for every case.</p>{% endif %}
 
 <div class="scroll" tabindex="0" role="region" aria-label="Case table">
 <table class="cases">
@@ -62,7 +64,7 @@
     <tr>
       <th scope="col" rowspan="2" class="case">Case</th>
       <th scope="col" rowspan="2">Historical record</th>
-      <th scope="col" rowspan="2">Reviewer, best cell mean [min, max]</th>
+      <th scope="col" rowspan="2" class="rev">AI reviewer on the PR, best prompt</th>
       <th scope="colgroup" colspan="6" class="grp">Sentinel</th>
       <th scope="colgroup" colspan="4" class="grp">hindsight oracle (written after the fix)</th>
       <th scope="col" rowspan="2">My fix</th>
@@ -82,15 +84,15 @@
     <tr>
       <th scope="row" class="case">Bugs caught</th>
       <td>caught <span class="num">{{ n - ns.ship }}</span> of <span class="num">{{ n }}</span></td>
-      <td>{% if ns.rev %}adjudicated <span class="num">{{ ns.rev }}</span> of <span class="num">{{ n }}</span>{% else %}<span class="unknown">pending adjudication</span>{% endif %}</td>
-      <td colspan="6" class="c">{% if totals.ran %}caught <span class="num">{{ totals.blocked }}</span> of <span class="num">{{ n }}</span> <span class="aside">({{ totals.ran }} run)</span>{% else %}<span class="unknown">not run yet</span>{% endif %}</td>
+      <td class="rev">{% set rx = (numbers.get("reviewer") or {}).get("x") %}{% if rx %}caught <span class="num">{{ "%g"|format(rx.value|round(1)) }}</span> of <span class="num">{{ rx.n }}</span> <span class="aside">mean of 3 runs [<span class="num">{{ rx.min }}</span>, <span class="num">{{ rx.max }}</span>], {{ rx.cell.split("/")[-1]|upper }} prompt</span>{% else %}<span class="unknown">pending adjudication</span>{% endif %}</td>
+      <td colspan="6" class="c">{% if totals.ran %}caught <span class="num">{{ totals.blocked }}</span> of <span class="num">{{ n }}</span> <span class="aside">pre-registered ({{ totals.ran }} run){% set ph = (numbers.get("sentinel") or {}).get("posthoc_a5") %}{% if ph %}; post-hoc amendment 5: <span class="num">{{ ph.s_intro.value }}</span> of <span class="num">{{ ph.s_intro.n }}</span>{% endif %}</span>{% else %}<span class="unknown">not run yet</span>{% endif %}</td>
       <td colspan="4" class="c">caught <span class="num">{{ ns.h }}</span> of <span class="num">{{ n }}</span></td>
       <td></td>
     </tr>
     <tr>
       <th scope="row" class="case">Fixes flagged</th>
       <td><span class="unknown">n/a</span></td>
-      <td>{% if ns.rev %}see rows{% else %}<span class="unknown">pending adjudication</span>{% endif %}</td>
+      <td class="rev">{% set ry = (numbers.get("reviewer") or {}).get("y") %}{% if ry %}flagged <span class="num">{{ "%g"|format(ry.value|round(1)) }}</span> of <span class="num">{{ ry.n }}</span> fixes <span class="aside">[<span class="num">{{ ry.min }}</span>, <span class="num">{{ ry.max }}</span>]</span>{% else %}<span class="unknown">pending adjudication</span>{% endif %}</td>
       <td colspan="6" class="c">{% if totals.fix_ran %}flagged <span class="num">{{ totals.fix_blocked }}</span> of <span class="num">{{ n }}</span> fixes <span class="aside">({{ totals.fix_ran }} run)</span>{% else %}<span class="unknown">not run yet</span>{% endif %}</td>
       <td colspan="4" class="c">flagged <span class="num">{{ ns.hb }}</span> of <span class="num">{{ n }}</span> fixes</td>
       <td></td>

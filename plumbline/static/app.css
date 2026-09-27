@@ -121,6 +121,9 @@ thead th { font-size: 1rem; font-weight: 600; color: var(--ink-2); vertical-alig
 .cases .totals .aside { display: inline; }
 .cases tr.dropped th, .cases tr.dropped td { color: var(--ink-2); }
 .json { font-size: 1rem; overflow-wrap: anywhere; }
+.cases .caught { color: var(--ink); font-weight: 500; }
+.cases .rev { min-width: 12rem; }
+.posthoc { display: block; margin-top: 0.375rem; font-size: 0.9375rem; white-space: nowrap; }
 
 /* Page heads */
 .page-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 1.25rem 2rem; margin-top: 2.5rem; }
