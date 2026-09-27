@@ -1,0 +1,873 @@
+[
+ {
+  "id": "ds-8313",
+  "tier": "HERO, dev",
+  "repo": "deepspeedai/DeepSpeed",
+  "file": "deepspeed/runtime/utils.py",
+  "function": "clip_grad_norm_",
+  "bug_plain": "For any norm_type other than 2, the global norm squares each per-tensor norm instead of raising it to p. Grads [3,-4] and [2], p=1: returns 53, truth 9. p=3: 2.8937 vs 4.6261. p=2 exact.",
+  "pattern": "power_root_order",
+  "intro": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/4915",
+   "title": "optimize clip_grad_norm_ function",
+   "author": "mmhab",
+   "sha": "961bc85624174e8ca8ee7626b3f3b53c6c768085",
+   "merged_at": "2024-02-07T20:44:47Z"
+  },
+  "pre": "4f477328",
+  "fixp": "92843ad706067f0ab551a06a079a8923dcde27b4",
+  "fix": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/8313",
+   "sha": "37cf8f240b1eadb178df462d8b80d356beabcf8b",
+   "merged_at": "2026-08-28T22:42:26Z",
+   "approved_by": "tohtana"
+  },
+  "review_on_intro": "tjruwase APPROVED 2024-01-19, empty body; 0 inline comments; no AI bot",
+  "ci_at_merge": "check-runs expired; merge queue ejected it 4 times ('failures that don't reproduce locally'), merged on the 5th attempt, so required merge-group checks passed at merge",
+  "days_alive": 933,
+  "releases": "49 GitHub release tags v0.13.2 (2024-02-12) to v0.19.6 (2026-08-27); first fixed v0.19.7 (2026-09-16)",
+  "sibling": "Same PR also changed the clip coefficient to torch.max(1, coef): never clipped, scaled small grads up. Fixed by #5150 (tohtana) 2024-02-21, about two weeks later. https://github.com/deepspeedai/DeepSpeed/pull/5150",
+  "tests_note": "At intro: TestClibGradNorm (world_size=2, default p=2) only asserts rank0 norm == rank1 norm. #5150 added test_clipped_val against torch.nn.utils.clip_grad_norm_ at default p=2 with grads [1],[1]: 1^2 == 1^p, a fixed point of the bug. Fix PR adds p in {1,2,3}: 8 failed / 8 passed before, 16 passed after.",
+  "oracle": "decomposition + reference: N_p = (sum_i ||g_i||_p^p)^(1/p) must equal ||concat(g)||_p for any split; clipped g' = g*min(1, max_norm/(N+eps)). Control p=2.",
+  "minimal_input": "grads [3,-4] and [2], max_norm 1, p in {1,2,3}",
+  "two_numbers": "p=1: returns 53.0, must be 9.0 (split-invariance: 81 / 53 / 29 for three splits of the same numbers)",
+  "replay": {
+   "pre": "PASS",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "extra": "005afe12 (#5150) FAIL at p=1,3 only",
+   "seconds": 8.6,
+   "script": "replay/cases/ds-8313/oracle.py"
+  },
+  "static": "ruff ALL 636, pylint 156, bandit 8, semgrep 0 on the fix-parent file; none on the bug line",
+  "stage_safe_claim": "DeepSpeed PR #4915, approved by one maintainer with no AI review, replaced **norm_type with .square() in clip_grad_norm_, so the documented norm_type argument gave wrong norms for any value other than 2 for 933 days until fix PR #8313, though no in-tree DeepSpeed call site ever passed a value other than 2.",
+  "caveats": [
+   "Latent on DeepSpeed's own path: no config key sets norm_type, every in-tree call passes 2. Say 'public API returned the wrong number', never 'corrupted DeepSpeed training'.",
+   "933 days applies to clip_grad_norm_ only; the ZeRO 1/2 and ZeRO 3 sites fixed by the same PR have older origins (#4974, #3565).",
+   "At 961bc856 the clipped-grads check also fails at p=2 because of the torch.max sibling; use the returned-norm check to isolate this bug."
+  ],
+  "split": "dev",
+  "headline": {
+   "context": "p=1",
+   "got": "53",
+   "must": "9"
+  }
+ },
+ {
+  "id": "ds-8533",
+  "tier": "HERO, dev",
+  "repo": "deepspeedai/DeepSpeed",
+  "file": "deepspeed/runtime/zero/muon/original_muon.py",
+  "function": "zeropower_via_gram_newtonschulz",
+  "bug_plain": "Muon's Gram Newton-Schulz casts the gradient to fp16 (max 65,504) before normalizing it, so a gradient 10,000x larger (an ordinary loss-scale factor) gives an all-zero update and 100,000x gives NaN. Nothing raises.",
+  "pattern": "narrowing_cast (early narrowing)",
+  "intro": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/7953",
+   "title": "Add Gram Newton-Schulz orthogonalization for Muon optimizer",
+   "author": "delock",
+   "sha": "8a77f381a4d8f3bf65747ac571b94324eaa4a29a",
+   "merged_at": "2026-04-30T13:29:07Z"
+  },
+  "pre": "5b441027",
+  "fixp": "0d4aa274731857561ebb479552d4223a99a0cedc",
+  "fix": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/8533",
+   "sha": "1663b5b59aaf58ec6accb1aca326e120e6b1c279",
+   "merged_at": "2026-09-21T15:26:56Z"
+  },
+  "review_on_intro": "PKUWZP APPROVED 'LGTM, delighted to collaborate on this.' (credited as co-author in the PR body). chatgpt-codex-connector reviewed commit 4fe6a0b4cf, which already had cast-then-normalize; its only finding was a P2 about ZeRO-3 per-group ns_method (dismissed by the author). https://github.com/deepspeedai/DeepSpeed/pull/7953#pullrequestreview-4054461174",
+  "ci_at_merge": "Merged 15 s after CI started on the final head (a merge-from-master commit), before it finished; 8 checks later passed, 1 cancelled; previous head all green. Job logs expired (HTTP 410).",
+  "days_alive": 144,
+  "releases": "8 GitHub releases v0.19.0 (2026-05-06) to v0.19.7 (2026-09-16); gram was the default ns_method",
+  "tests_note": "TestGramNewtonSchulz (world_size 2, fp16, ZeRO 1/2/3) only asserts every parameter changed. The kernel is wrapped in @compiler.compile(); on CPU, inductor skips the fp16 rounding, so compiled runs look fine.",
+  "oracle": "finite_extremes scale_invariant: f(c*G) == f(G) for c > 0 (the polar factor ignores scale), output finite and non-zero.",
+  "minimal_input": "G = randn(32,128) seed 0, eager, fp16 compute; compare f(G) with f(1e4*G) and f(1e5*G)",
+  "two_numbers": "at 1e4: output norm 0.000, must be 4.773 (cosine 0.00 vs 1.00); at 1e5: NaN",
+  "replay": {
+   "pre": "PASS (control: zeropower_via_newtonschulz5 in bf16, a different function)",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "seconds": 3.9,
+   "script": "replay/cases/ds-8533/oracle.py"
+  },
+  "static": "ruff ALL 220 (N806 near the line), pylint invalid-name, bandit 11 none, semgrep 0",
+  "stage_safe_claim": "DeepSpeed PR #7953 was merged on 2026-04-30 with one maintainer approval and an OpenAI Codex bot review that did not flag the fp16 cast-before-normalize in Gram Newton-Schulz. That bug stayed in main for 144 days until fix PR #8533 merged on 2026-09-21.",
+  "caveats": [
+   "Shows only when run eagerly; torch.compile on CPU hides it; whether GPU compile hides it is unknown.",
+   "The ZeRO zero-update path through a full training step is inferred from code, not run.",
+   "Generic Sentinel sees the gram function absent at pre: 'born with the code' (n/a), not PASS."
+  ],
+  "split": "dev",
+  "headline": {
+   "context": "at 1e4",
+   "got": "norm 0.000",
+   "must": "4.773"
+  }
+ },
+ {
+  "id": "st-3921",
+  "tier": "HERO, dev",
+  "repo": "huggingface/sentence-transformers",
+  "file": "sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py (at intro); sentence_transformers/sentence_transformer/losses/global_orthogonal_regularization.py (later)",
+  "function": "GlobalOrthogonalRegularizationLoss.compute_gor",
+  "bug_plain": "The GOR loss averages over pairs of different inputs; a batch of one has no pairs, so it divides 0 by 0 and returns NaN instead of 0.",
+  "pattern": "zero_denominator",
+  "intro": {
+   "pr": "https://github.com/huggingface/sentence-transformers/pull/3654",
+   "title": "[feat] Introduce GlobalOrthogonalRegularizationLoss",
+   "author": "tomaarsen (maintainer, self-merged)",
+   "sha": "2caeddff7d65bbac9642d55835caf10952532716",
+   "merged_at": "2026-02-05T13:17:57Z"
+  },
+  "pre": "b099b9e9",
+  "fixp": "b806a61ab679f44beaf83e658b4d1b7176f62e39",
+  "fix": {
+   "pr": "https://github.com/huggingface/sentence-transformers/pull/3921",
+   "sha": "655121f9be2d2caac1cb7859ff62340cc9878258",
+   "merged_at": "2026-08-31T12:24:23Z",
+   "approved_by": "tomaarsen"
+  },
+  "review_on_intro": "No human approval review. Copilot flagged it: 'compute_gor will fail with a division by zero error when batch_size is 1' (https://github.com/huggingface/sentence-transformers/pull/3654#discussion_r2768913476) and suggested returning zeros or an informative error; a second comment suggested an eps. All 6 Copilot threads were resolved with no reply; commit 3bf335bdda took 3 other suggestions and left the line unchanged.",
+  "ci_at_merge": "PR head ff661d5a: 7 of 16 'Run unit tests' jobs failed (logs expired, cause unknown); merge commit on main 17/17 success. Do not call it CI green.",
+  "days_alive": 207,
+  "releases": "11 releases v5.3.0 to v6.1.0; v6.1.0 (2026-09-18) still has the bug; no released version has the fix as of 2026-09-26",
+  "tests_note": "No test touched GOR until the fix added test_global_orthogonal_regularization.py.",
+  "oracle": "edge_sweep / degenerate input: for n=1 there are no pairs, so both GOR terms are 0 and task+GOR == task; finite for every n; n>=2 matches a brute-force loop over explicit pairs.",
+  "minimal_input": "embeddings randn(1,8); controls randn(2,8), randn(4,8)",
+  "two_numbers": "batch of 1: GOR = NaN, must be 0 (task + GOR = NaN vs 1.4410)",
+  "replay": {
+   "pre": "n/a (file created by #3654)",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "extra": "tag v6.1.0 FAIL; n=2,3,4 PASS on every SHA",
+   "seconds": 5.6,
+   "script": "replay/cases/st-3921/oracle.py"
+  },
+  "static": "ruff ALL 63 (E501 near), pylint line-too-long, bandit 0, semgrep 0",
+  "stage_safe_claim": "In sentence-transformers PR #3654 (merged 2026-02-05), GitHub Copilot's reviewer warned that batch_size=1 makes num_off_diagonal zero and suggested returning zeros. Its thread was resolved with no reply and no code change, and the NaN it produces for a batch of one lived about 207 days, until fix PR #3921 merged on 2026-08-31.",
+  "caveats": [
+   "Copilot predicted a crash; PyTorch returns a silent NaN. Right place, wrong consequence.",
+   "Gradients stay finite; the harm is a NaN loss value. With the Trainer default logging_nan_inf_filter=True the logged train loss hides it (code-read). eval_loss NaN is code-read, not executed."
+  ],
+  "split": "dev",
+  "headline": {
+   "context": "batch of 1",
+   "got": "NaN",
+   "must": "0"
+  }
+ },
+ {
+  "id": "ds-8334",
+  "tier": "dev (backup lead)",
+  "repo": "deepspeedai/DeepSpeed",
+  "file": "deepspeed/runtime/data_pipeline/curriculum_scheduler.py",
+  "function": "CurriculumScheduler.__fixed_root_get_difficulty (update_difficulty at intro, get_difficulty later)",
+  "bug_plain": "Difficulty is floored to a multiple of difficulty_step and clamped only at the top. With min 8 and step 16 the first sequence length is 0; with the tutorial example (min 8, max 1024, T=15000) the first 118 optimizer steps get seqlen 0. Nothing raises.",
+  "pattern": "one_sided_clamp",
+  "intro": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/1307",
+   "title": "Curriculum learning",
+   "author": "conglongli",
+   "sha": "b2b34ae342d6f851226e995f2e1021d12e761093",
+   "merged_at": "2021-08-16T18:57:55Z"
+  },
+  "pre": "504893a (file absent)",
+  "fixp": "c7eed1594d3de902796cf81ce6e7b84efe5979d8",
+  "fix": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/8334",
+   "sha": "8e09ed2acde363d5efcf3577f9586e9f4fcba672",
+   "merged_at": "2026-09-02T03:59:59Z",
+   "approved_by": "tohtana"
+  },
+  "review_on_intro": "jeffra APPROVED 2021-08-16T17:06:11Z; minjiaz APPROVED 18:27:59Z ('The PR looks good to me!'); no bots (2021)",
+  "ci_at_merge": "unknown (expired); only scheduler tests needed a GPU and used min=2 step=2",
+  "days_alive": 1842,
+  "releases": "101 GitHub releases v0.5.0 to v0.19.6; first fixed v0.19.7",
+  "tests_note": "test_curriculum_scheduler_fixed_linear uses min 2, step 2 (min is a multiple of step, the one corner where the floor is a no-op), hand-written expected values matching the implementation, GPU-only.",
+  "oracle": "bounds: min_difficulty <= d(t) <= max_difficulty for every t; companions monotone and d(T) == max.",
+  "minimal_input": "min 8, max 1024, fixed_linear, total 100, step 16; get_difficulty(0)",
+  "two_numbers": "step 0: difficulty 0, must be >= 8",
+  "replay": {
+   "pre": "n/a",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "extra": "6/6 trigger configs fail, 0/4 benign false positives",
+   "seconds": 3.8,
+   "script": "replay/cases/ds-8334/oracle.py"
+  },
+  "stage_safe_claim": "The DeepSpeed curriculum-scheduler floor that let the first difficulty drop below min_difficulty was added in PR #1307, approved by two maintainers on 2021-08-16, and lived 1842 days until fix PR #8334 merged on 2026-09-02.",
+  "caveats": [
+   "The same tutorial says min_difficulty should be a multiple of 16 for INT8; (1,8) and (10,8) also fail and do not rely on that pairing.",
+   "What seqlen 0 does in a real model was not replayed; say 'zero-length sequence'.",
+   "Earlier research named #2585 as the introducer; the fact check walked past that rename to #1307. Use #1307."
+  ],
+  "split": "dev",
+  "headline": {
+   "context": "step 0",
+   "got": "0",
+   "must": ">= 8"
+  }
+ },
+ {
+  "id": "ray-65747",
+  "tier": "dev",
+  "repo": "ray-project/ray",
+  "file": "python/ray/tune/pbt.py (intro), python/ray/tune/schedulers/pbt.py (later)",
+  "function": "explore / _explore",
+  "bug_plain": "PBT nudges an integer hyperparameter by 20% and converts back with int(), which truncates: 4*1.2 stays 4, 1*0.8 becomes 0. Values below 5 can only go down, and 0 is absorbing.",
+  "pattern": "narrowing_cast (truncating int())",
+  "intro": {
+   "pr": "https://github.com/ray-project/ray/pull/1478",
+   "title": "[tune] clean up population based training prototype",
+   "author": "ericl",
+   "sha": "b948405532b4fc0c8d4cea80eea9d495cc3d2821",
+   "merged_at": "2018-02-03T07:03:12Z"
+  },
+  "pre": "a936468f (prototype, different ceil-to-even bug)",
+  "fixp": "8c9e87cd2d77af4eb2a6fdda8fc82a9d948bffad",
+  "fix": {
+   "pr": "https://github.com/ray-project/ray/pull/65747",
+   "sha": "e9456df39bfed41ce054a55468a7985b42d5eea5",
+   "merged_at": "2026-09-09T05:41:31Z"
+  },
+  "review_on_intro": "richardliaw APPROVED 2018-02-01 ('Seems functional on my computer - performance on cartpole doesn't seem \"amazing\".'); 25 review comments, none on the int() line",
+  "ci_at_merge": "Jenkins 'Test PASSed' comments for builds 3589-3596 before merge; Travis unknown",
+  "days_alive": 3139,
+  "releases": "122 GitHub releases ray-0.3.1 (2018-02-04) to ray-2.58.0 (2026-08-23); no release contains the fix yet",
+  "tests_note": "testPerturbWithoutResample used int_factor=10: 10*1.2 and 10*0.8 are exact integers, so truncation equals rounding.",
+  "oracle": "nearest-integer rounding and direction: |y - f*x| <= 0.5 and f > 1 implies y >= x; random walk must not be absorbed at 0.",
+  "minimal_input": "x=4, f=1.2 (expect 5); x=1, f=0.8 (expect 1)",
+  "two_numbers": "4 x 1.2 gives 4, must be 5; in 500 simulated runs of 50 perturbations from 32, 61% end at 0 (correct rounding: 0%)",
+  "replay": {
+   "pre": "FAIL (prototype had a different bug)",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "extra": "x=10 and x=100 pass on buggy code (the test values)",
+   "seconds": 0.44,
+   "script": "replay/cases/ray-65747/oracle.py"
+  },
+  "stage_safe_claim": "Ray Tune's PBT has converted perturbed integer hyperparameters back with int(), which truncates toward zero. That line was added in PR #1478, approved and merged in February 2018. It stayed in place for about 8.6 years, until PR #65747 switched it to round() in September 2026.",
+  "caveats": [
+   "No clean pre-bug control.",
+   "The 61% figure is a simulation of _explore only, not a real PBT run."
+  ],
+  "split": "dev",
+  "headline": {
+   "context": "4 x 1.2",
+   "got": "4",
+   "must": "5"
+  }
+ },
+ {
+  "id": "st-4019",
+  "tier": "dev",
+  "repo": "huggingface/sentence-transformers",
+  "file": "sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py (intro)",
+  "function": "batch_hard_triplet_soft_margin_loss",
+  "bug_plain": "The loss computes log(1 + e^x) literally; above x = 88.72 (fp32) e^x overflows, loss is inf and all gradients NaN.",
+  "pattern": "overflow",
+  "intro": {
+   "pr": "https://github.com/huggingface/sentence-transformers/pull/299",
+   "title": "Adding support for more triplet losses",
+   "author": "cpcdoy",
+   "sha": "e7f7cbe4c4e694ec1457daa6e56b5bbf856d9719",
+   "merged_at": "2020-07-09T13:39:09Z"
+  },
+  "pre": "c9c8dfc (method was a pass stub)",
+  "fixp": "af1f4efcbbd3dc990b7e9b2ae281fb0843bc699e",
+  "fix": {
+   "pr": "https://github.com/huggingface/sentence-transformers/pull/4019",
+   "sha": "f3db086191749a0707547acd1943236871e8195c",
+   "merged_at": "2026-09-15T21:42:10Z"
+  },
+  "review_on_intro": "0 reviews, 0 comments; merged by nreimers into v0.2.7 branch",
+  "ci_at_merge": "none existed",
+  "days_alive": 2259,
+  "releases": "65 tags v0.3.0 to v6.1.0; no tag contains the fix",
+  "tests_note": "Zero tests for this loss for about 6 years.",
+  "oracle": "finite_extremes + float64 softplus reference",
+  "two_numbers": "gap 99: loss inf, must be 33.54",
+  "replay": {
+   "pre": "n/a",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "seconds": 1.4,
+   "script": "replay/cases/st-4019/oracle.py"
+  },
+  "caveats": [
+   "Maintainer called the fix 'a bit unnecessary'. Normalized embeddings cannot trigger it.",
+   "An LLM reviewer shown log1p(exp(x)) will likely spot it: weak proof that reviewers miss things, useful as an honest 'reviewers do catch obvious ones' row."
+  ],
+  "split": "dev",
+  "headline": {
+   "context": "gap 99",
+   "got": "inf",
+   "must": "33.54"
+  }
+ },
+ {
+  "id": "st-3868",
+  "tier": "held-out",
+  "repo": "huggingface/sentence-transformers",
+  "file": "sentence_transformers/sparse_encoder/losses/SparseCoSENTLoss.py",
+  "function": "SparseCoSENTLoss.__init__ default similarity_fct",
+  "bug_plain": "Sparse CoSENT defaulted to util.cos_sim (a BxB matrix) instead of pairwise_cos_sim, so a perfectly ranked batch scored 20.0 (should be about 0) and training pushed apart the pairs labeled most similar.",
+  "pattern": "shape_from_index0 (silent broadcast, wrong default)",
+  "intro": {
+   "pr": "https://github.com/huggingface/sentence-transformers/pull/3401",
+   "author": "arthurbr11",
+   "sha": "fca9068a03e3cc22e438462f5e174efa36656cd6 (upstream merge 14afc4b6681f0b83bded05fe91a8fd3320d453f9)",
+   "merged_at": "2025-06-30T14:34:35Z"
+  },
+  "pre": "ddcb056",
+  "fixp": "756a16019a1206c5687ee43edc9cd190b2d1f193",
+  "fix": {
+   "pr": "https://github.com/huggingface/sentence-transformers/pull/3868",
+   "sha": "4713cf11b0dce44a16d437ea0e76fc80c6791425",
+   "merged_at": "2026-07-17T07:19:48Z"
+  },
+  "review_on_intro": "tomaarsen APPROVED; Copilot reviewed 162 of 198 files, 3 inline comments on other files; whether it reviewed this file is unknown. Docstring right under the line says 'Default is util.pairwise_cos_sim'.",
+  "days_alive": 382,
+  "releases": "15 releases v5.0.0 to v5.6.1; first fixed v5.7.0",
+  "two_numbers": "perfectly ranked 2-pair batch: loss 20.0, must be about 2e-9",
+  "replay": {
+   "pre": "n/a (sibling dense CoSENTLoss PASS)",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "seconds": 2.3,
+   "script": "replay/cases/st-3868/oracle.py"
+  },
+  "caveats": [
+   "0 public Hub models tagged with this loss.",
+   "Fork PR #42 Copilot did NOT see this file (fact-check correction)."
+  ],
+  "split": "held-out",
+  "headline": {
+   "context": "perfectly ranked 2-pair batch",
+   "got": "20",
+   "must": "about 2e-9"
+  }
+ },
+ {
+  "id": "ray-65535",
+  "tier": "held-out",
+  "repo": "ray-project/ray",
+  "file": "python/ray/tune/search/sample.py",
+  "function": "Quantized.sample",
+  "bug_plain": "tune.quniform(lo, hi, 1) returned unrounded floats because an 'if q == 1: return' shortcut is only true for integer domains.",
+  "pattern": "false identity shortcut",
+  "intro": {
+   "pr": "https://github.com/ray-project/ray/pull/28187",
+   "author": "ilee300a (+krfricke)",
+   "sha": "d59d8c6268ef2f0bef49c229c208fcdaed21362a",
+   "merged_at": "2022-09-16T20:03:03Z"
+  },
+  "pre": "e63b405",
+  "fixp": "5b114d0bb01577ab7ef6635ece1929431b170b9f",
+  "fix": {
+   "pr": "https://github.com/ray-project/ray/pull/65535",
+   "sha": "e936a4b09490ee881265004fba5acb2dbd5a5a74",
+   "merged_at": "2026-08-31T20:26:40Z"
+  },
+  "review_on_intro": "krfricke APPROVED after CHANGES_REQUESTED; reviewers questioned the q==1 special case (discussion_r959973383), nobody computed quniform(lo,hi,1)",
+  "days_alive": 1445,
+  "releases": "69 GitHub releases ray-2.1.0 to ray-2.58.0; no release contains the fix",
+  "two_numbers": "quniform(-10,10,1): 1000 of 1000 samples off-grid (e.g. 0.9763); q=2 control 0 of 1000",
+  "replay": {
+   "pre": "PASS",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "seconds": 3.3,
+   "script": "replay/cases/ray-65535/oracle.py"
+  },
+  "caveats": [
+   "Search-space sampling, not gradient math.",
+   "No generic family for 'quantization grid' exists; expect a Sentinel miss unless a template covers it."
+  ],
+  "downstream": "User issue https://github.com/ray-project/ray/issues/45494 (2024-05-22): 'confusing, and misleading, which can result in weird bugs'",
+  "split": "held-out",
+  "headline": null
+ },
+ {
+  "id": "ray-65790",
+  "tier": "held-out",
+  "repo": "ray-project/ray",
+  "file": "python/ray/tune/schedulers/pbt.py",
+  "function": "PopulationBasedTraining._quantiles",
+  "bug_plain": "quantile_fraction=0 is documented as 'no exploitation', but trials[-0:] is the whole list, so every trial checkpoints every interval for nothing.",
+  "pattern": "negative-zero slice",
+  "intro": {
+   "pr": "https://github.com/ray-project/ray/pull/4912",
+   "author": "timonbimon (first-time contributor)",
+   "sha": "c2253d2313f5a43c20658319063e1713ad695e67",
+   "merged_at": "2019-06-04T01:45:16Z"
+  },
+  "pre": "b674c4a",
+  "fixp": "0dc4886da85a47ea236b45e7976e3ed930268ffa",
+  "fix": {
+   "pr": "https://github.com/ray-project/ray/pull/65790",
+   "sha": "8c9e87cd2d77af4eb2a6fdda8fc82a9d948bffad",
+   "merged_at": "2026-09-09T05:41:22Z"
+  },
+  "review_on_intro": "ericl APPROVED on an earlier commit that already had the bug; merged by richardliaw. Later PR #57160 edited _quantiles and got 6 AI bot reviews (gemini-code-assist x3, cursor x3) that did not mention it.",
+  "days_alive": 2654,
+  "releases": "108 GitHub releases ray-0.7.2 to ray-2.58.0; fix unreleased",
+  "two_numbers": "4 trials: q=0 gives upper quantile 4 of 4, q=0.25 gives 1 of 4 (asking for less returns more)",
+  "replay": {
+   "pre": "PASS (q hardcoded 0.25)",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "seconds": 2.7,
+   "script": "replay/cases/ray-65790/oracle.py"
+  },
+  "caveats": [
+   "Wastes checkpoints and misreports a counter; trained weights unchanged."
+  ],
+  "split": "held-out",
+  "headline": null
+ },
+ {
+  "id": "zoo-1286",
+  "tier": "held-out",
+  "repo": "unslothai/unsloth-zoo",
+  "file": "unsloth_zoo/rl_replacements.py",
+  "function": "grpo_compute_loss",
+  "bug_plain": "With DAPO/CISPO/VESPO, a fully masked batch divides by a token count of 0, so the step is NaN or inf instead of contributing nothing.",
+  "pattern": "zero_denominator",
+  "intro": {
+   "pr": "https://github.com/unslothai/unsloth-zoo/pull/308",
+   "author": "pluesclues",
+   "sha": "f690a5aaa3eccab272f6b64c990a93a7a64a0b60",
+   "merged_at": "2025-10-29T05:54:28Z"
+  },
+  "pre": "75106e95",
+  "fixp": "ac41049b6ae13f560d6ae3bf52da47ac6f0e0940",
+  "fix": {
+   "pr": "https://github.com/unslothai/unsloth-zoo/pull/1286",
+   "sha": "937d9434a2281fcf10fbb9ecf2d3f62888819085",
+   "merged_at": "2026-09-23T12:55:41Z"
+  },
+  "review_on_intro": "0 reviews, 0 comments; merged by danielhanchen",
+  "days_alive": 329,
+  "releases": "78 PyPI releases 2025.10.13 to 2026.9.7",
+  "two_numbers": "empty mask: loss NaN, must be 0.0; mask=1 with count 0: loss -inf",
+  "replay": {
+   "pre": "PASS (bnpo only; dapo did not exist)",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "seconds": 5.5,
+   "script": "replay/cases/zoo-1286/oracle.py"
+  },
+  "caveats": [
+   "Reachable in practice only from TRL 1.9.0 (about 64 of the 329 days).",
+   "Same introducing PR as zoo-1369."
+  ],
+  "split": "held-out",
+  "headline": {
+   "context": "empty mask",
+   "got": "NaN",
+   "must": "0"
+  }
+ },
+ {
+  "id": "unsloth-11337",
+  "tier": "held-out",
+  "repo": "unslothai/unsloth (+ unsloth-zoo #308)",
+  "file": "unsloth/models/rl_replacements.py",
+  "function": "compute_loss divisor",
+  "bug_plain": "GRPO eval loss was divided by the grad-accum setting (4x too small at 4 steps) because eval reused a training-only counter.",
+  "pattern": "grad_accum scale leak",
+  "intro": {
+   "pr": "https://github.com/unslothai/unsloth/pull/3390",
+   "author": "pluesclues",
+   "sha": "45b1c7f7c831f20d41a4d74dd668a8065e08cb9f",
+   "merged_at": "2025-10-29T05:54:34Z"
+  },
+  "pre": "0e766b28",
+  "fixp": "43e7dd302ee859b9cd047efc548afd985e62676a",
+  "fix": {
+   "pr": "https://github.com/unslothai/unsloth/pull/11337",
+   "sha": "06c1bb400cc6e277be5c144d2a0978ab835dcc3d",
+   "merged_at": "2026-09-22T09:45:07Z"
+  },
+  "review_on_intro": "0 reviews. On the partial fix #6523, Codex raised a P1 naming this exact bug (https://github.com/unslothai/unsloth/pull/6523#discussion_r3453026815); a human LGTM followed; merged unchanged; bug lived 91 more days.",
+  "days_alive": 328,
+  "releases": "101 unsloth PyPI releases 2025.10.12 to 2026.9.7",
+  "two_numbers": "GA=4: eval_loss 0.00963, must be 0.03851 (beta*KL); ratio exactly 4.000",
+  "replay": {
+   "pre": "PASS",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "seconds": 7.7,
+   "script": "replay/cases/unsloth-11337/oracle.py"
+  },
+  "caveats": [
+   "Reported eval loss only; training path bitwise unchanged (maintainer)."
+  ],
+  "split": "held-out",
+  "headline": {
+   "context": "GA=4",
+   "got": "0.00963",
+   "must": "0.03851"
+  }
+ },
+ {
+  "id": "unsloth-11470",
+  "tier": "held-out (needs transformers image)",
+  "repo": "unslothai/unsloth",
+  "file": "unsloth/trainer.py",
+  "function": "_create_unsloth_optimizer",
+  "bug_plain": "Setting embedding_learning_rate silently trained the whole model with weight decay 0; the config still showed the user's value.",
+  "pattern": "config value read from the wrong object",
+  "intro": {
+   "pr": "https://github.com/unslothai/unsloth/pull/506",
+   "title": "Nightly",
+   "author": "danielhanchen",
+   "sha": "72b19da6bd55cf3b1835d30f42914f65529e304b",
+   "merged_at": "2024-05-21T18:45:57Z"
+  },
+  "pre": "dde6a0f0 (file absent)",
+  "fixp": "bbfabb2e",
+  "fix": {
+   "pr": "https://github.com/unslothai/unsloth/pull/11470",
+   "sha": "ed004ac705b96cfb071876b45bffab1f6ba5ca52",
+   "merged_at": "2026-09-22T17:55:43Z"
+  },
+  "review_on_intro": "0 reviews; opened and self-merged 104 s later. Codex reviewed this function on #10887 eight days before the fix, flagged a sibling silent drop (FSDP ignores embedding_learning_rate), never mentioned weight decay.",
+  "days_alive": 853,
+  "releases": "about 246 PyPI releases 2024.8 to 2026.9.9; first fixed 2026.9.10",
+  "two_numbers": "param_group weight_decay [0.0, 0.0], must be [0.1, ...]",
+  "replay": {
+   "pre": "n/a",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "seconds": 6.2,
+   "script": "replay/cases/unsloth-11470/oracle.py (needs transformers + accelerate)"
+  },
+  "caveats": [
+   "Quality impact not measured; small per run in the CPT notebook config."
+  ],
+  "downstream": "Maintainer: 'This is live in the shipped notebooks' (https://github.com/unslothai/unsloth/pull/11470#issuecomment-5775529203)",
+  "split": "held-out",
+  "headline": null
+ },
+ {
+  "id": "unsloth-10842",
+  "tier": "stretch held-out (needs bitsandbytes 0.50.2 image)",
+  "repo": "unslothai/unsloth",
+  "file": "unsloth/optimizers/q_galore_adamw.py",
+  "function": "QGaLoreAdamW8bit.step",
+  "bug_plain": "Q-GaLore counted every step twice (bitsandbytes update_step already increments), so Adam bias correction used t=1,3,5 and the projection refreshed twice as often.",
+  "pattern": "double-incremented counter",
+  "intro": {
+   "pr": "https://github.com/unslothai/unsloth/pull/4511",
+   "author": "OnePunchMonk",
+   "sha": "45d0a343b5a46c7a711db40be6edc3381ead0733",
+   "merged_at": "2026-03-25T08:03:10Z"
+  },
+  "pre": "11606c50 (dir absent)",
+  "fixp": "a092906c98a1e9ffbc809e2bfa1261ffe3d507fa",
+  "fix": {
+   "pr": "https://github.com/unslothai/unsloth/pull/10842",
+   "sha": "677a988dd5a9bd57dc7036e3c0dec102c9c1b6ad",
+   "merged_at": "2026-09-14T04:32:22Z"
+  },
+  "review_on_intro": "No approval review (REVIEW_REQUIRED at merge); maintainer pushed 3 commits, ran 24/24 tests and a B200 benchmark. gemini-code-assist (4 passes) and chatgpt-codex-connector (6 passes) reviewed it; none mentioned the step counter.",
+  "days_alive": 173,
+  "releases": "66 PyPI versions 2026.3.12 to 2026.9.4",
+  "two_numbers": "after 3 steps: step counter 6, must be 3; param 0.7288, must be 0.7000",
+  "replay": {
+   "pre": "n/a",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "seconds": 4.5,
+   "script": "replay/cases/unsloth-10842/oracle.py"
+  },
+  "caveats": [
+   "Opt-in feature. Only fp32 state path on CPU exercised."
+  ],
+  "split": "index",
+  "headline": {
+   "context": "after 3 steps",
+   "got": "counter 6",
+   "must": "3"
+  }
+ },
+ {
+  "id": "zoo-1369",
+  "tier": "stretch held-out",
+  "repo": "unslothai/unsloth-zoo",
+  "function": "grpo_compute_loss",
+  "bug_plain": "DAPO/CISPO/VESPO loss divided by the whole generation batch's token count, scaling each step by GA/steps_per_generation (0.5x, 2x, 4x).",
+  "intro": {
+   "pr": "https://github.com/unslothai/unsloth-zoo/pull/308",
+   "sha": "f690a5aaa3eccab272f6b64c990a93a7a64a0b60"
+  },
+  "fixp": "863cce0ece3b61d1a0ebdd0bd46e6afcafc06435",
+  "fix": {
+   "pr": "https://github.com/unslothai/unsloth-zoo/pull/1369",
+   "sha": "a764054980dfbee745cb0a6e124722734fd53e10"
+  },
+  "days_alive": 332,
+  "replay": {
+   "pre": "n/a",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS"
+  },
+  "caveats": [
+   "A constant loss scale largely cancels in AdamW; effect is on clipping and logged numbers."
+  ],
+  "split": "index",
+  "headline": null
+ },
+ {
+  "id": "unsloth-10681",
+  "tier": "stretch held-out",
+  "repo": "unslothai/unsloth",
+  "function": "LongRopeRotaryEmbedding",
+  "bug_plain": "At exactly 4096 tokens (Phi-3.5's pretraining length) LongRope used '<' where it needed '<=': crash on a cold cache, wrong long-factor rotation (max error 2.38) on a warm one.",
+  "intro": {
+   "pr": "https://github.com/unslothai/unsloth/pull/940",
+   "sha": "fb60340a909c0e08901ab493051cc5e23ba92011",
+   "note": "self-merged 28 s after opening"
+  },
+  "fixp": "7434717466d09c5d936e4348267feca4bb4621d3",
+  "fix": {
+   "pr": "https://github.com/unslothai/unsloth/pull/10681",
+   "sha": "9b3b2b1c825f02bf74d566f2e61995aa742ff575"
+  },
+  "days_alive": 753,
+  "replay": {
+   "pre": "n/a",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS"
+  },
+  "caveats": [
+   "Class likely dead code on supported installs from about June 2025."
+  ],
+  "split": "index",
+  "headline": null
+ },
+ {
+  "id": "zoo-1240",
+  "tier": "stretch dev",
+  "repo": "unslothai/unsloth-zoo",
+  "function": "grpo_compute_loss (kl_i)",
+  "bug_plain": "exp(d) - d - 1 in fp32 cancels: KL reads 0 or even negative (-5.96e-08 at d=1e-6, truth 5e-13).",
+  "intro": {
+   "pr": "https://github.com/unslothai/unsloth-zoo/pull/45",
+   "sha": "86232127f90830bd7b33cc2ec968c5079d91f525",
+   "note": "self-merged 2 min 41 s after opening, 0 reviews"
+  },
+  "fixp": "17d7f22fd8d21b2981e7948cf154dbf489a975bd",
+  "fix": {
+   "pr": "https://github.com/unslothai/unsloth-zoo/pull/1240",
+   "sha": "ba721e43c0573a13d1ca74fda57b1dccb8113185"
+  },
+  "days_alive": 588,
+  "replay": {
+   "pre": "n/a",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS"
+  },
+  "caveats": [
+   "Gradient identical; value only.",
+   "torch.testing.assert_close with default fp32 tolerances PASSES the wrong sign (why_hard_checks.out)."
+  ],
+  "split": "index",
+  "headline": null
+ },
+ {
+  "id": "st-4012",
+  "tier": "stretch dev",
+  "repo": "huggingface/sentence-transformers",
+  "function": "PListMLELoss",
+  "bug_plain": "ListMLE normalizer uses raw exp: scores above about 88 give inf; scores near -1000 give 1954.9 instead of 0.313.",
+  "intro": {
+   "pr": "https://github.com/tomaarsen/sentence-transformers/pull/6 (reached master via https://github.com/huggingface/sentence-transformers/pull/3222)",
+   "sha": "8d0b2d32b221dc6c78c500f24b6b54993be42641"
+  },
+  "fixp": "0e6ef6564c036967b86f1dc653155cb53ad8eb7f",
+  "fix": {
+   "pr": "https://github.com/huggingface/sentence-transformers/pull/4012",
+   "sha": "94d68cf9cca6498d54e4c0d3f84532cbd33a7a9f"
+  },
+  "days_alive": 539,
+  "replay": {
+   "pre": "n/a",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS"
+  },
+  "caveats": [
+   "Maintainer: scores rarely get that high."
+  ],
+  "split": "index",
+  "headline": null
+ },
+ {
+  "id": "ds-8324",
+  "tier": "stretch dev",
+  "repo": "deepspeedai/DeepSpeed",
+  "function": "_elementwise_flops_compute",
+  "bug_plain": "FLOPs profiler aligned broadcast shapes from index 0: [32,128,4096]*[4096] counted 128x too many.",
+  "intro": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/1591",
+   "sha": "082f392a939896e2fef782eabee2200b5e340902"
+  },
+  "fixp": "7fabe4735f6d59834ac576c79ef69f50004690e4",
+  "fix": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/8324",
+   "sha": "b8bfd260465b05a22009c0d23a17646cf57fd156"
+  },
+  "days_alive": 1722,
+  "replay": {
+   "pre": "n/a",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS"
+  },
+  "caveats": [
+   "Measurement bug, not training math."
+  ],
+  "split": "index",
+  "headline": null
+ },
+ {
+  "id": "ds-8199",
+  "tier": "stretch dev",
+  "repo": "deepspeedai/DeepSpeed",
+  "function": "CommsLogger.log_all / trim_mean",
+  "bug_plain": "trim_mean sorts stored lists in place, so the straggler breakdown compares unrelated operations and under-reports (0.4 s reported as 0).",
+  "intro": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/3579",
+   "sha": "5d1124f2aaff1af3dd1fab8f142ae09cc25cc228"
+  },
+  "fixp": "e1d6b4fe43626ca74df3defab06d747e0b499995",
+  "fix": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/8199",
+   "sha": "b8b448096524f7bfe81a709a14b57a1da83dfe75"
+  },
+  "days_alive": 1132,
+  "replay": {
+   "pre": "n/a",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS",
+   "note": "2 real gloo ranks"
+  },
+  "caveats": [
+   "Say 'the straggler number has been wrong since #3579'; the pieces date to #1554 and #2012."
+  ],
+  "split": "index",
+  "headline": null
+ },
+ {
+  "id": "ds-8179",
+  "tier": "stretch (no PR)",
+  "repo": "deepspeedai/DeepSpeed",
+  "function": "OneCycle stair counts",
+  "bug_plain": "cycle_first/second_stair_count were stored and documented but never read; every value gave the same schedule.",
+  "intro": {
+   "pr": null,
+   "sha": "7a9fbe67adc431a8d74d930585ee6264660fcb8d",
+   "note": "direct 'Add files via upload' commit 2020-02-03, no PR"
+  },
+  "fixp": "6c58fb75fd9ddfa8d7b63fa35848d4f69beb8789",
+  "fix": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/8179",
+   "sha": "3169c2dcf89b16b96d0ec76b57a22f0f1fbdb5ea"
+  },
+  "days_alive": 2367,
+  "replay": {
+   "pre": "n/a",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS"
+  },
+  "caveats": [
+   "Config silently ignored; no proven accuracy loss."
+  ],
+  "split": "index",
+  "headline": null
+ },
+ {
+  "id": "st-4020",
+  "tier": "stretch (no PR)",
+  "repo": "huggingface/sentence-transformers",
+  "function": "OnlineContrastiveLoss",
+  "bug_plain": "len(x) > 1 where >= 1 was meant: with one hard positive and one hard negative the loss is 0 and nothing is learned.",
+  "intro": {
+   "pr": null,
+   "sha": "2900310707f3ed22faea08695cbe787c0e3b13f7",
+   "note": "direct push 2020-08-04"
+  },
+  "fixp": "f3db086191749a0707547acd1943236871e8195c",
+  "fix": {
+   "pr": "https://github.com/huggingface/sentence-transformers/pull/4020",
+   "sha": "c5d2dc851284af7fe49e14b5fe83530ed17b76ba"
+  },
+  "days_alive": 2233,
+  "replay": {
+   "pre": "n/a",
+   "intro": "FAIL",
+   "fixp": "FAIL",
+   "fix": "PASS"
+  },
+  "caveats": [
+   "PR #3838 added the first tests at exactly this corner but with easy pairs, where the right answer is also 0; Copilot reviewed #3838 twice."
+  ],
+  "split": "index",
+  "headline": null
+ },
+ {
+  "id": "ds-8268",
+  "tier": "exclude from headline",
+  "function": "get_config_from_args (WarmupCosineLR CLI flags)",
+  "intro": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/4563"
+  },
+  "fix": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/8268"
+  },
+  "days_alive": 1026,
+  "caveats": [
+   "Crashes eventually (TypeError); weak fit for the silent-math story."
+  ],
+  "split": "dropped",
+  "headline": null
+ },
+ {
+  "id": "ds-8227",
+  "tier": "exclude from headline",
+  "function": "OnebitLamb.get_lamb_coeffs",
+  "intro": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/970"
+  },
+  "fix": {
+   "pr": "https://github.com/deepspeedai/DeepSpeed/pull/8227"
+  },
+  "days_alive": 1937,
+  "caveats": [
+   "List aliasing of a logged diagnostic, not training math."
+  ],
+  "split": "dropped",
+  "headline": null
+ }
+]

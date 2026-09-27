@@ -12,7 +12,7 @@ SCHEMA = json.load(open(os.path.join(HERE, "plan_schema.json")))
 # glm-5.3 and glm-5.3-flash spend the whole token budget reasoning on this prompt (8k: no answer;
 # glm-5.3 at 24k: 129 s, no answer; NOTES Sat 20:15), so the plan's third fallback leads.
 MODELS = ("deepseek-v4-flash-0731", "deepseek-v4-flash-0731")   # second = fresh conversation
-PLANNER_VERSION = "v1.1"   # v1.1: mechanical normalization of typed args before validation (amendment 3)
+PLANNER_VERSION = "v1.2"   # v1.1: normalize typed args (amendment 3); v1.2: drop type-name outputs (amendment 4)
 FAMS_BY_ADAPTER = {"call": {"bounds", "monotonic", "finite_extremes", "dtype_shadow", "no_mutation",
                             "edge_sweep", "reference", "decomposition"},
                    "grad_norm": {"decomposition", "reference"}}
@@ -142,6 +142,8 @@ def _normalize(c):
                 call[k] = {n: _arg(a) for n, a in call[k].items()}
         if isinstance(call.get("args"), list):
             call["args"] = [_arg(a) for a in call["args"]]
+        if call.get("output") in ("int", "float", "str", "bool", "tensor", "list", "dict", "number"):
+            call.pop("output")                                        # a type hint, not a key to select
         t = call.get("target", "")
         if ":" in t and "construct" in call and "method" not in call:   # "path:Cls.method" + construct
             path, qual = t.split(":", 1)

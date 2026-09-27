@@ -138,3 +138,17 @@ normalizes these before validation (control plane only; the frozen harness is un
 guess ends as ERROR, never as a detection. All 24 Sentinel runs are rerun fresh under planner v1.1;
 the 9 earlier runs on dev cases (ds-8313, ds-8533, st-3921, ds-8334) stay in the database, labeled
 by planner version, and are reported as superseded. No held-out case had been run.
+
+## Amendment 4 (Sat Sep 26 20:10 PDT)
+
+The v1.1 rerun exposed three harness binding bugs on dev cases: a private (name-mangled) method given
+as `method` was not found (ds-8334); a target that already is the named method (`Class.method` plus
+`method`, a staticmethod) was looked up on the function itself (st-4019, ray-65747); an absent
+method now reports `missing_target`. Fixed in the harness and frozen as `harness-frozen-v2`
+(sandboxd sha256 `e1024e8e7d01d83bde3bf954627290a664ddf39a223defdaf81260f4254fed0e`), with
+`tests/harness/test_adapter_binding.py`. Planner v1.2 also drops a type name written in `output`.
+The fixes were checked by replaying the recorded v1.1 plans of three dev cases (in-sample) locally.
+All 24 Sentinel runs are rerun on frozen-v2 with planner v1.2; earlier runs stay in the database,
+labeled by harness and planner version. Disclosure: when the v1.1 queue was stopped, the held-out
+case st-3868 had been planned and dispatched but produced no result; that plan and its interrupted
+run were not inspected and are superseded like the others.

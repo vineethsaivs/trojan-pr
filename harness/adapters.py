@@ -146,6 +146,21 @@ def _bound(b, cfg):
     return float(b)
 
 
+def _method(target, m):
+    """getattr with private-name mangling; a target that already IS the named method is used as is
+    (plans often write target 'Cls.method' plus method 'method'); absent = missing_target."""
+    names = [m]
+    if m.startswith("__") and not m.endswith("__"):
+        cls = target if isinstance(target, type) else type(target)
+        names.append(f"_{cls.__name__.lstrip('_')}{m}")
+    for n in names:
+        if hasattr(target, n):
+            return getattr(target, n)
+    if callable(target) and getattr(target, "__name__", None) == m:
+        return target
+    raise MissingTarget(f"method {m} not found at this commit")
+
+
 # ---- call adapter ---------------------------------------------------------------------------
 class Call:
     def __init__(self, mod, job, call):
@@ -158,7 +173,7 @@ class Call:
                 target = target(**{k: build(v, sv, scale, dt) for k, v in c["construct"].items()})
             if "set_attr" in c:
                 setattr(target, c["set_attr"], sv)
-            fn = getattr(target, c["method"]) if "method" in c else target
+            fn = _method(target, c["method"]) if "method" in c else target
             args = [build(a, sv, scale, dt) for a in c.get("args", [])]
             kwargs = {k: build(v, sv, scale, dt) for k, v in c.get("kwargs", {}).items()}
             kwargs.update(extra_kwargs or {})

@@ -1,0 +1,173 @@
+"""Plumbline web app (VM1). One app, two listeners: PL_ROLE=judge on :8080 (behind the NetBird reverse
+proxy with PIN), PL_ROLE=operator on :8081 (laptop over NetBird P2P). Binds the NetBird IP or loopback
+only; the VM has zero inbound ports. Judges may run Sentinel on the hero cases only."""
+import hashlib, json, os, threading, uuid
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from plumbline import db
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+ROLE = os.environ.get("PL_ROLE", "operator")
+CHIP = {"judge": "judge · PIN · via NetBird", "operator": "operator · P2P · NetBird"}[ROLE]
+LABELS = ["pre", "intro", "fixp", "fix"]
+HEROES = {"ds-8313", "ds-8533", "st-3921"}          # judge-runnable (PLAN 8: judge on heroes only)
+EVAL_HARNESS = "harness-frozen-v2"
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+app.mount("/static", StaticFiles(directory=os.path.join(HERE, "static")), name="static")
+T = Jinja2Templates(directory=os.path.join(HERE, "templates"))
+
+
+def _cases():
+    return json.load(open(os.path.join(ROOT, "results", "cases.json")))
+
+
+def _numbers():
+    p = os.path.join(ROOT, "results", "numbers.json")
+    return json.load(open(p)) if os.path.exists(p) else {}
+
+
+def _j(v, default=None):
+    try:
+        return json.loads(v) if isinstance(v, str) else (v if v is not None else default)
+    except ValueError:
+        return default
+
+
+def _ctx(request, **kw):
+    return {"request": request, "role": ROLE, "chip": CHIP, **kw}
+
+
+def _eval_runs(conn):
+    """Latest finished eval run per (case, which) on the frozen harness and current planner version."""
+    rows = conn.execute("SELECT * FROM runs WHERE status='done' AND json_extract(subject, '$.harness')=? "
+                        "ORDER BY created_at", (EVAL_HARNESS,)).fetchall()
+    latest = {}
+    for r in rows:
+        s = _j(r["subject"], {})
+        latest[(r["case_id"], s.get("which"))] = r
+    return latest
+
+
+def _statuses(conn, run_id):
+    st = {}
+    for c in conn.execute("SELECT commit_label, status FROM cells WHERE run_id=?", (run_id,)):
+        cur = st.get(c["commit_label"])
+        st[c["commit_label"]] = "FAIL" if "FAIL" in (cur, c["status"]) else "PASS" if "PASS" in (cur, c["status"]) else "ERROR"
+    return st
+
+
+@app.get("/")
+def index(request: Request):
+    conn = db.connect()
+    runs, nums = _eval_runs(conn), _numbers()
+    rows = []
+    for c in _cases():
+        intro, fix = runs.get((c["id"], "intro")), runs.get((c["id"], "fix"))
+        rows.append({**c, "sentinel": {"run_id": intro["id"], "verdict": intro["verdict"], "statuses": _statuses(conn, intro["id"])} if intro else None,
+                     "sentinel_fix": {"run_id": fix["id"], "verdict": fix["verdict"]} if fix else None,
+                     "reviewer": (nums.get("reviewer_by_case") or {}).get(c["id"])})
+    ev = [r for r in rows if r["split"] in ("dev", "held-out")]
+    totals = {"n": len(ev), "ran": sum(1 for r in ev if r["sentinel"]),
+              "blocked": sum(1 for r in ev if r["sentinel"] and r["sentinel"]["verdict"] == "BLOCK"),
+              "fix_ran": sum(1 for r in ev if r["sentinel_fix"]),
+              "fix_blocked": sum(1 for r in ev if r["sentinel_fix"] and r["sentinel_fix"]["verdict"] == "BLOCK")}
+    return T.TemplateResponse(request, "index.html", _ctx(request, rows=rows, totals=totals, numbers=nums))
+
+
+@app.get("/cases/{cid}")
+def case(request: Request, cid: str):
+    c = next((c for c in _cases() if c["id"] == cid), None)
+    if not c:
+        raise HTTPException(404)
+    conn = db.connect()
+    runs = [dict(r) for r in conn.execute("SELECT id, status, verdict, created_at, wall_ms, subject FROM runs "
+                                          "WHERE case_id=? ORDER BY created_at DESC LIMIT 5", (cid,))]
+    for r in runs:
+        r["subject"] = _j(r["subject"], {})
+    runnable = os.path.exists(os.path.join(os.environ.get("PLUMBLINE_INPUTS", "/var/lib/plumbline/inputs"), cid, "commits.json"))
+    can_run = runnable and (ROLE == "operator" or cid in HEROES)
+    return T.TemplateResponse(request, "case.html", _ctx(request, c=c, runs=runs, can_run=can_run))
+
+
+@app.post("/cases/{cid}/run")
+def run_case(cid: str):
+    if ROLE != "operator" and cid not in HEROES:
+        raise HTTPException(403, "judges can run the hero cases only")
+    from plumbline.sentinel import run_pr
+    run_id = f"{cid}-live-{uuid.uuid4().hex[:6]}"
+    threading.Thread(target=run_pr, args=(cid, "intro"), kwargs={"run_id": run_id, "cap_s": 45}, daemon=True).start()
+    return RedirectResponse(f"/runs/{run_id}", status_code=303)
+
+
+def _run_view(conn, run_id):
+    r = conn.execute("SELECT * FROM runs WHERE id=?", (run_id,)).fetchone()
+    if not r:
+        return None
+    run = dict(r)
+    run["subject"], run["plan"] = _j(r["subject"], {}), _j(r["plan"], {})
+    labels = LABELS if run["subject"].get("which", "intro") == "intro" else ["fixp", "fix"]
+    mand = set(run["plan"].get("mandatory_ids") or [])
+    checks = {c["id"]: c for c in run["plan"].get("checks") or []}
+    grid = {}
+    for c in conn.execute("SELECT * FROM cells WHERE run_id=? ORDER BY check_id", (run_id,)):
+        row = grid.setdefault(c["check_id"], {"check_id": c["check_id"], "family": c["family"],
+                                              "target": (c["target"] or "").split(":")[-1], "cells": {}, "decision": None,
+                                              "mandatory": c["check_id"].split(".")[0] in mand,
+                                              "why": (checks.get(c["check_id"].split(".")[0]) or {}).get("why")})
+        row["cells"][c["commit_label"]] = {"status": c["status"], "detail": c["detail"], "metric": _j(c["metric"]),
+                                           "threshold": _j(c["threshold"]), "witness": _j(c["witness"], {})}
+        if c["decision"]:
+            row["decision"] = c["decision"]
+    headline = None
+    for row in grid.values():
+        w = row["cells"].get("intro" if "intro" in labels else "fix", {}).get("witness") or {}
+        if row["decision"] in ("detected", "detected_new") and "got" in w and "want" in w:
+            headline = {"got": f"{w['got']:.6g}", "must": f"{w['want']:.6g}", "check_id": row["check_id"],
+                        "context": (row["cells"]["intro"]["detail"] or "").split(":")[0]}
+            break
+    rec = conn.execute("SELECT body FROM receipts WHERE run_id=?", (run_id,)).fetchone()
+    receipt = _j(rec["body"]) if rec else None
+    return {"run": run, "labels": labels, "grid": list(grid.values()), "headline": headline,
+            "receipt": {"sha256": hashlib.sha256(rec["body"].encode()).hexdigest(),
+                        "key_id": receipt["signature"]["key_id"], "jobs": receipt["execution"]["jobs"],
+                        "runtime": receipt["execution"]["runtime"]} if receipt else None,
+            "done": run["status"] == "done"}
+
+
+@app.get("/runs/{run_id}")
+def run_page(request: Request, run_id: str):
+    v = _run_view(db.connect(), run_id)
+    return T.TemplateResponse(request, "run.html", _ctx(request, run_id=run_id, v=v))
+
+
+@app.get("/runs/{run_id}/body")
+def run_body(request: Request, run_id: str):
+    """htmx polls this every second until the run is done."""
+    v = _run_view(db.connect(), run_id)
+    return T.TemplateResponse(request, "_run_body.html", _ctx(request, run_id=run_id, v=v))
+
+
+@app.get("/runs/{run_id}/receipt.json")
+def receipt_json(run_id: str):
+    rec = db.connect().execute("SELECT body FROM receipts WHERE run_id=?", (run_id,)).fetchone()
+    if not rec:
+        raise HTTPException(404)
+    return JSONResponse(json.loads(rec["body"]))
+
+
+@app.get("/arena")
+def arena(request: Request):
+    return T.TemplateResponse(request, "arena.html", _ctx(request, prs=[], numbers=_numbers()))
+
+
+@app.get("/replay")
+def replay():
+    """Key P on stage: the latest finished hero run, shown with a REPLAY banner (PLAN 0.2 fallback)."""
+    r = db.connect().execute("SELECT id FROM runs WHERE case_id='ds-8313' AND status='done' AND verdict='BLOCK' "
+                             "ORDER BY created_at DESC LIMIT 1").fetchone()
+    if not r:
+        raise HTTPException(404, "no finished hero run to replay")
+    return RedirectResponse(f"/runs/{r['id']}?replay=1", status_code=303)

@@ -37,7 +37,7 @@ H = ["ds-8313", "ds-8533", "st-3921", "ds-8334", "ray-65747", "st-4019",
      "st-3868", "ray-65535", "ray-65790", "zoo-1286", "unsloth-11337", "unsloth-11470"]
 
 
-def queue(harness="harness-frozen-v1"):
+def queue(harness="harness-frozen-v2"):
     """PLAN 4.9. Skips (case, which) pairs that already have a finished run on this harness."""
     import time
     from plumbline import db

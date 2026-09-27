@@ -3,7 +3,7 @@ judge -> signed receipt -> SQLite. VM1 never executes PR or upstream code; it on
 ships source. Historical mode replays a real PR: intro run = pre->intro (all 4 commits shown),
 fix run = fixp->fix (the benign control)."""
 import base64, hashlib, json, math, os, subprocess, sys, time, uuid
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from plumbline import db, judge
 from plumbline.fetch import fetch_closure, gh_raw
@@ -144,13 +144,21 @@ def run_pr(cid, which="intro", harness="harness", run_id=None, conn=None, cap_s=
     plan = make_plan(diff, f"{meta.get('title', '')}\n\n{meta.get('body') or ''}", pre, cap_s=cap_s)
     checks = plan["checks"]
     db.update_run(conn, run_id, status="running", plan={k: v for k, v in plan.items() if k != "model_calls"})
-    with ThreadPoolExecutor(4) as ex:
-        res = {r["label"]: r for r in ex.map(lambda l: run_commit(run_id, ci, l, checks, hp, harness), labels)}
     ids = {c["id"] for c in checks}
-    per = {l: judge.cells(res[l]["lines"], ids) for l in labels}
+    targets = {c["id"]: c["call"]["target"] for c in checks}
+    res, per = {}, {}
+    with ThreadPoolExecutor(4) as ex:   # each commit's cells land as soon as its job returns (live grid)
+        futs = [ex.submit(run_commit, run_id, ci, l, checks, hp, harness) for l in labels]
+        for f in as_completed(futs):
+            r = f.result()
+            res[r["label"]], per[r["label"]] = r, judge.cells(r["lines"], ids)
+            for k, c in per[r["label"]].items():
+                db.upsert(conn, "cells", run_id=run_id, check_id=k, commit_label=r["label"], sha=r["sha"],
+                          family=c.get("family"), target=targets.get(k.split(".")[0]), status=c["status"],
+                          metric=json.dumps(_clean(c.get("metric"))), threshold=json.dumps(_clean(c.get("threshold"))),
+                          detail=c.get("detail"), witness=_clean(c.get("witness") or {}), decision=None)
     base, head = per[base_l], per[head_l]
     decisions = {cid_: judge.decide(base.get(cid_) or base.get(cid_.split(".")[0]), h) for cid_, h in head.items()}
-    targets = {c["id"]: c["call"]["target"] for c in checks}
     touched = [f"{f['file']}:{s}" for f in pre for s in f["symbols"]]
     verdict, reason = judge.verdict(decisions, targets, touched)
     results = []
