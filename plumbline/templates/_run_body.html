@@ -61,6 +61,68 @@
   </section>
   {% endif %}
 
+
+  {% set SHORT = {"decomposition": "split vs whole", "reference": "vs reference", "dtype_shadow": "vs float64", "edge_sweep": "edge input", "bounds": "range", "no_mutation": "input unchanged", "finite_extremes": "large input", "ga_invariance": "accumulation", "monotonic": "direction", "config_audit": "config"} %}
+  {% set ON = {"pre": "the code before the PR", "intro": "the PR", "fixp": "the code before my fix", "fix": "my fix", "base": "the code before the PR", "head": "the PR"} %}
+  {% set tgt = ((checks[0].get("call") or {}).get("target") or "") if checks else "" %}
+  <section class="live" aria-label="What the checker is doing">
+    <h2>{% if done %}What it did, step by step{% else %}Working, step by step{% endif %}</h2>
+    <ol class="steps">
+      <li class="step is-done">
+        <span class="dot" aria-hidden="true"></span>
+        <div>
+          <p class="step-t">Read the diff of PR #{{ s.get("pr") }}</p>
+          <p class="step-d">{{ s.get("repo") }}, <span class="mono">{{ (s.get("base_sha") or "")[:8] }}</span> to <span class="mono">{{ (s.get("head_sha") or "")[:8] }}</span>{% if tgt %}, changes <span class="mono">{{ tgt.split(":")[-1] }}</span> in <span class="mono">{{ tgt.split(":")[0] }}</span>{% endif %}</p>
+        </div>
+      </li>
+      <li class="step {{ 'is-done' if p else 'is-active' }}">
+        <span class="dot" aria-hidden="true"></span>
+        <div>
+          <p class="step-t">{% if p %}Chose the math rules this code must obey{% else %}Asking the model on Vultr which math rules this code must obey{% endif %}</p>
+          {% if p %}
+          <p class="step-d"><span class="mono">{{ p.get("model") or "model" }}</span> on Vultr Serverless Inference{% if p.get("latency_ms") is not none %}, <span class="num">{{ "%.1f"|format(p.latency_ms / 1000) }}</span> s{% endif %}</p>
+          <ul class="calc">
+          {% for c in checks %}
+            {% set pr = c.get("params") or {} %}{% set ps = [] %}
+            {% if pr.get("p") is iterable and pr.get("p") is not string %}{% for x in pr.get("p") %}{% set _ = ps.append(x) %}{% endfor %}{% endif %}
+            {% for k in (pr.get("cases") or []) %}{% set nt = k.get("norm_type") if k is mapping else none %}{% if nt is mapping %}{% set _ = ps.append(nt.get("float")|int) %}{% endif %}{% endfor %}
+            <li><span>{{ RULE.get(c.get("family"), c.get("family")) }}{% if pr.get("ref") %}: <span class="mono">{{ pr.ref }}</span>{% endif %}{% if ps %}, at p = {{ ps|join(", ") }}{% endif %}</span> <span class="by">{{ "built-in" if c.get("id") in mand else "chosen by the model" }}</span></li>
+          {% endfor %}
+          </ul>
+          {% else %}
+          <p class="step-d">The model reads the diff and picks rules from 10 families. It never decides the verdict.</p>
+          {% endif %}
+        </div>
+      </li>
+      {% for l in v.labels %}
+      {% set rows = v.grid|selectattr("cells")|list %}
+      {% set lc = namespace(n=0, sha="") %}{% for row in v.grid %}{% set c = row.cells.get(l) %}{% if c %}{% set lc.n = lc.n + 1 %}{% if c.get("sha") %}{% set lc.sha = c.sha %}{% endif %}{% endif %}{% endfor %}
+      <li class="step {{ 'is-done' if lc.n else ('is-active' if p and not done else 'is-waiting') }}">
+        <span class="dot" aria-hidden="true"></span>
+        <div>
+          <p class="step-t">{% if lc.n %}Ran them on {{ ON.get(l, l) }}{% elif p and not done %}Running them on {{ ON.get(l, l) }} in a gVisor sandbox{% else %}Run them on {{ ON.get(l, l) }}{% endif %}</p>
+          <p class="step-d">{% if lc.sha %}DeepSpeed at <span class="mono">{{ lc.sha[:8] }}</span>, {% endif %}sandbox on Vultr VM2: no network, read-only disk</p>
+          {% if lc.n %}
+          <ul class="calc">
+          {% for row in (v.grid|selectattr("mandatory")|list) + (v.grid|rejectattr("mandatory")|list) %}{% set c = row.cells.get(l) %}{% if c %}
+            {% set d = (c.detail or "").split(";")[0] %}{% set ctx = d.rsplit(": ", 1)[0].split(": ")[0] if ": " in d else "" %}{% set calc = d.rsplit(": ", 1)[-1] %}
+            <li class="{{ 'is-bad' if c.status == 'FAIL' else ('is-err' if c.status == 'ERROR' else '') }}"><span class="mono">{{ SHORT.get(row.family, row.family) }}{% if ctx %}, {{ ctx }}{% endif %}: {{ calc|truncate(60, true) }}</span> <span class="res-word">{{ {"PASS": "holds", "FAIL": "breaks", "ERROR": "error"}.get(c.status, c.status|lower) }}</span></li>
+          {% endif %}{% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+      <li class="step {{ 'is-done' if done else 'is-waiting' }}">
+        <span class="dot" aria-hidden="true"></span>
+        <div>
+          <p class="step-t">{% if done %}Judged it{% else %}Judge{% endif %}</p>
+          <p class="step-d">{% if done %}{% set br = v.grid|selectattr("decision", "in", ["detected", "detected_new"])|list %}{% if br %}{{ br|length }} rule{{ "s" if br|length != 1 }} held before the PR and broke on it: {{ r.get("verdict") }}.{% else %}No rule broke on the PR: {{ r.get("verdict") }}.{% endif %} Plain code decides, not the model, and the receipt is signed.{% else %}Blocks only if a rule held before the PR and breaks on it.{% endif %}</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
   <section class="checks" aria-labelledby="checks-h">
     <h2 id="checks-h">What was checked</h2>
     <div class="scroll" tabindex="0" role="region" aria-label="Checks by version">

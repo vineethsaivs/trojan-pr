@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Run {{ run_id }} · Plumbline{% endblock %}
+{% block title %}Run {{ run_id }} · Trojan PR{% endblock %}
 {% block main %}
 {% if request.query_params.get("replay") %}
 <p class="replay" role="status">REPLAY of run <span class="mono">{{ run_id }}</span>, recorded <span class="num">{% if v %}{{ (v.run.get("created_at") or "unknown")[:19]|replace("T", " ") }} UTC{% else %}unknown{% endif %}</span></p>

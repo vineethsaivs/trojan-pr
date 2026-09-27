@@ -1,4 +1,4 @@
-"""Plumbline web app (VM1). One app, two listeners: PL_ROLE=judge on :8080 (behind the NetBird reverse
+"""Trojan PR web app (VM1). One app, two listeners: PL_ROLE=judge on :8080 (behind the NetBird reverse
 proxy with PIN), PL_ROLE=operator on :8081 (laptop over NetBird P2P). Binds the NetBird IP or loopback
 only; the VM has zero inbound ports. Judges may run Sentinel on the hero cases only."""
 import hashlib, json, os, threading, uuid
@@ -146,7 +146,7 @@ def _run_view(conn, run_id):
                                               "mandatory": c["check_id"].split(".")[0] in mand,
                                               "why": (checks.get(c["check_id"].split(".")[0]) or {}).get("why")})
         row["cells"][c["commit_label"]] = {"status": c["status"], "detail": c["detail"], "metric": _j(c["metric"]),
-                                           "threshold": _j(c["threshold"]), "witness": _j(c["witness"], {})}
+                                           "threshold": _j(c["threshold"]), "witness": _j(c["witness"], {}), "sha": c["sha"]}
         if c["decision"]:
             row["decision"] = c["decision"]
     headline = None

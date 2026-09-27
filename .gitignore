@@ -42,3 +42,4 @@ keys/*
 *.pem*
 # agent instructions (private paths)
 CLAUDE.md
+DEMO_PREP.md

@@ -1,4 +1,4 @@
-# Plumbline
+# Trojan PR
 
 A PR gate for ML training code that checks the math, not the diff.
 
@@ -6,7 +6,7 @@ Take three numbers: 3, -4 and 2. Their total size (the p=1 norm) is 3 + 4 + 2 = 
 
 That is the kind of bug I fix. More than 140 of my pull requests have merged upstream since June (DeepSpeed, Unsloth, sentence-transformers, Ray and others), and most fix the same shape: nothing raises, a number is just wrong. This weekend I traced 23 of them back to the change that caused them (21 PRs, 2 direct commits). They shipped, lived a median of 933 days from merge to fix, and 11 of the 23 came in through a PR with an approving review (one of those approvals was from a credited co-author).
 
-Plumbline's Sentinel reads a PR, picks the math the change must preserve, and runs those checks in gVisor sandboxes on Vultr, on four commits: before the PR, the PR, just before the fix, and the fix. It returns BLOCK, PASS or NOT COVERED, with a signed receipt you can verify offline.
+Trojan PR's Sentinel reads a PR, picks the math the change must preserve, and runs those checks in gVisor sandboxes on Vultr, on four commits: before the PR, the PR, just before the fix, and the fix. It returns BLOCK, PASS or NOT COVERED, with a signed receipt you can verify offline.
 
 **Vultr Agent Arena, Challenge 1 (Blast Radius Zero), plus the NetBird bonus.** VM backend: two Vultr VMs ([Vultr](#vultr)). Agent LLM calls: all through Vultr Serverless Inference ([Vultr](#vultr)). Control plane: VM1 plans, dispatches to the sandbox VM, judges and signs ([How it works](#how-it-works)). Sandboxes: gVisor containers on VM2, never in the app process ([Security and containment](#security-and-containment)). Web app: a judge starts a live Sentinel run and gets a verdict with a signed receipt ([Demo](#demo)). Verifiable output: `plumbline verify` checks any receipt offline. NetBird: no open ports, PIN-gated access by role, P2P between the VMs ([NetBird](#netbird)).
 
@@ -29,10 +29,10 @@ A reviewer, human or AI, reads the diff. The bug is a number nobody computed.
 
 ## Demo
 
-Judge URL: https://plumbline.eu1.netbird.services (PIN given in person).
+Judge URL: https://trojan-pr.eu1.netbird.services (PIN given in person). The NetBird screenshots below were taken under the project's working name, plumbline, whose proxy service still exists as a fallback.
 
 - `/cases/ds-8313`: the hero case. Press **Run Sentinel** and watch the 4-column grid fill: before PASS, PR FAIL, just before the fix FAIL, fix PASS, verdict BLOCK with "p=1, grads [3,-4],[2]: got 53, must be 9".
-- Download the run's `receipt.json` and check it offline (Python 3.10+, `pip install cryptography`): `python -m plumbline.cli verify receipt.json --pin keys/plumbline.pub`. A committed example: `docs/evidence/receipt-ds-8313.json`.
+- Download the run's `receipt.json` and check it offline (Python 3.10+, `pip install cryptography`): `python -m trojan_pr.cli verify receipt.json --pin keys/plumbline.pub`. A committed example: `docs/evidence/receipt-ds-8313.json`.
 - `/`: all 23 traced bugs with the historical record, the AI reviewer and Sentinel columns, and my fix.
 - `/arena`: three hand-written PRs with green CI and the reviewer's verdicts. One is a Trojan. Press **R** to reveal.
 
@@ -44,7 +44,7 @@ Judges can browse everything but run Sentinel only on three cases: ds-8313 (bloc
  judge's browser
       |  HTTPS + PIN
       v
- NetBird reverse proxy (plumbline.eu1.netbird.services)
+ NetBird reverse proxy (trojan-pr.eu1.netbird.services)
       |  WireGuard
       v
  VM1 pl-control (Vultr, ATL)            control plane; no Docker; binds the NetBird IP only
@@ -130,7 +130,7 @@ Dev cases shaped the oracle templates (in-sample). Held-out cases were frozen be
 The three peers (`pl-control`, `pl-sandbox`, my laptop), all connected, each in its own group.
 
 ![NetBird reverse proxy service](docs/img/netbird-proxy-service.jpg)
-The public service `plumbline.eu1.netbird.services` routes to `pl-control`'s NetBird IP on :8080, with PIN auth on.
+The public service `trojan-pr.eu1.netbird.services` routes to `pl-control`'s NetBird IP on :8080, with PIN auth on.
 
 ![NetBird access logs](docs/img/netbird-access-logs.jpg)
 Requests to the judge URL, each authenticated with the PIN (client IPs masked).
@@ -169,7 +169,7 @@ No cloud needed:
 ```bash
 pip install -r requirements.txt                                      # or just cryptography, for verify
 python3 tests/test_judge.py                                          # decision rule, lying sandbox, tamper
-python -m plumbline.cli verify docs/evidence/receipt-ds-8313.json --pin keys/plumbline.pub
+python -m trojan_pr.cli verify docs/evidence/receipt-ds-8313.json --pin keys/plumbline.pub
 ```
 
 Infra:
@@ -193,10 +193,10 @@ make deploy-control     # app, planner, judge, agents to VM1
 Runs (VM1 unless noted):
 
 ```bash
-python -m plumbline.cli keygen /etc/plumbline/signing.pem   # prints the public key
-python -m plumbline.cli hist ds-8313                        # one historical Sentinel run
+python -m trojan_pr.cli keygen /etc/plumbline/signing.pem   # prints the public key
+python -m trojan_pr.cli hist ds-8313                        # one historical Sentinel run
 python bakeoff/run.py --runs 3 --workers 8                  # AI reviewer, 144 reviews
-python -m plumbline.cli queue harness-frozen-v2             # Sentinel on the 24 PRs
+python -m trojan_pr.cli queue harness-frozen-v2             # Sentinel on the 24 PRs
 python -m plumbline.agents --sabotage-check                 # hand library through CI + Sentinel
 python -m plumbline.agents --overnight                      # agent round
 make numbers                                                # laptop: results/numbers.json

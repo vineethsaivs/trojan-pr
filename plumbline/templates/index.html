@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Cases · Plumbline{% endblock %}
+{% block title %}Cases · Trojan PR{% endblock %}
 {% set LABELS = ["pre", "intro", "fixp", "fix"] %}
 {% set SPLIT = {"dev": "in-sample", "held-out": "held-out", "index": "index only", "dropped": "dropped"} %}
 {% set ev = rows|selectattr("split", "in", ["dev", "held-out"])|list %}
