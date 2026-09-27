@@ -1,6 +1,7 @@
 """Planner (PLAN 5.4): glm-5.3 fills typed check templates via one tool, submit_plan. It never writes
 code and never sets a tolerance. Mandatory checks from the prepass always run; the planner can only
-add (<= 6). Invalid after one repair turn, or over 45 s: mandatory only, source 'prepass_default'."""
+add (<= 6). Invalid after one repair turn: keep only the checks that validate on their own
+(source 'planner_partial', rejects listed); none valid or over 45 s: mandatory only ('prepass_default')."""
 import hashlib, json, os, re, time
 import jsonschema
 from plumbline import llm
@@ -8,7 +9,9 @@ from plumbline import llm
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROMPT = open(os.path.join(HERE, "prompts", "planner.txt")).read()
 SCHEMA = json.load(open(os.path.join(HERE, "plan_schema.json")))
-MODELS = ("glm-5.3", "glm-5.3-flash", "deepseek-v4-flash-0731")
+# glm-5.3 and glm-5.3-flash spend the whole token budget reasoning on this prompt (8k: no answer;
+# glm-5.3 at 24k: 129 s, no answer; NOTES Sat 20:15), so the plan's third fallback leads.
+MODELS = ("deepseek-v4-flash-0731", "deepseek-v4-flash-0731")   # second = fresh conversation
 FAMS_BY_ADAPTER = {"call": {"bounds", "monotonic", "finite_extremes", "dtype_shadow", "no_mutation",
                             "edge_sweep", "reference", "decomposition"},
                    "grad_norm": {"decomposition", "reference"}}
@@ -80,6 +83,9 @@ def semantic_errors(plan, touched_files, surface=None):
             errs.append(f"{cid}: target file {path} is not touched by the diff")
         if c["family"] not in FAMS_BY_ADAPTER.get(c["adapter"], set()):
             errs.append(f"{cid}: adapter {c['adapter']} does not support {c['family']} here")
+        ref = (c.get("params") or {}).get("ref")
+        if c["family"] == "reference" and (ref == "torch.clip_grad_norm_") != (c["adapter"] == "grad_norm"):
+            errs.append(f"{cid}: ref torch.clip_grad_norm_ goes with adapter grad_norm, other refs with call")
         p = c.get("params", {})
         for side in ("lo", "hi"):
             b = p.get(side)
@@ -103,6 +109,19 @@ def _parse(msg):
 def _errors(plan, touched_files, surface):
     if plan is None:
         return ["no submit_plan call and no JSON object in content"]
+    def _unstr(v):                                                  # tool args sometimes arrive as JSON strings
+        try:
+            return json.JSONDecoder().raw_decode(v.strip())[0] if isinstance(v, str) and v.strip()[:1] in "[{" else v
+        except ValueError:
+            return v
+    plan["checks"] = _unstr(plan.get("checks"))
+    for c in plan["checks"] if isinstance(plan["checks"], list) else []:
+        if isinstance(c, dict):
+            c.update({k: _unstr(c[k]) for k in ("call", "params") if k in c})
+    plan["summary"] = str(plan.get("summary", ""))[:400]        # display-only text: trim, never reject
+    for c in plan.get("checks", []) if isinstance(plan.get("checks"), list) else []:
+        if isinstance(c, dict) and isinstance(c.get("why"), str):
+            c["why"] = c["why"][:240]
     v = sorted(jsonschema.Draft202012Validator(SCHEMA).iter_errors(plan), key=lambda e: list(e.path))
     errs = [f"{'/'.join(map(str, e.path)) or 'plan'}: {e.message[:200]}" for e in v[:8]]
     return errs or semantic_errors(plan, touched_files, surface)
@@ -116,15 +135,14 @@ def make_plan(diff, description, pre, surface=None, config=None, cap_s=45, model
             .replace("{adapter_catalog}", ADAPTER_CATALOG).replace("{surface_map}", json.dumps(surface or {}))
             .replace("{config_json}", json.dumps(config or {})))
     t0, calls, errs, model, plan, source = time.time(), [], [], None, None, "prepass_default"
+    rejected = []
+    deadline = t0 + cap_s
     for model in models:
-        msgs = [{"role": "user", "content": user}]
+        msgs, last = [{"role": "user", "content": user}], None
         try:
             for turn in range(2):                                   # first try + one repair turn
-                left = cap_s - (time.time() - t0)
-                if left < 5:
-                    raise TimeoutError("planner cap reached")
-                msg, rec = llm.chat("planner", model, msgs, tools=[TOOL], max_tokens=8000, timeout=left,
-                                    tool_choice={"type": "function", "function": {"name": "submit_plan"}})
+                msg, rec = llm.chat("planner", model, msgs, tools=[TOOL], max_tokens=8000, timeout=cap_s,
+                                    deadline=deadline, tool_choice={"type": "function", "function": {"name": "submit_plan"}})
                 calls.append(rec)
                 try:
                     cand = _parse(msg)
@@ -132,6 +150,7 @@ def make_plan(diff, description, pre, surface=None, config=None, cap_s=45, model
                     cand, errs = None, [f"arguments are not JSON: {e}"]
                 else:
                     errs = _errors(cand, touched, surface)
+                    last = cand if isinstance(cand, dict) else last
                 if not errs:
                     plan, source = cand, "planner" if turn == 0 else "planner_repaired"
                     break
@@ -141,17 +160,24 @@ def make_plan(diff, description, pre, surface=None, config=None, cap_s=45, model
                               "content": "INVALID PLAN:\n" + "\n".join(errs)}]
                 msgs.append({"role": "user", "content": "The plan failed validation (errors above: "
                              + "; ".join(errs)[:1500] + "). Call submit_plan once more with a corrected plan."})
-            if plan or time.time() - t0 > cap_s - 5:
-                break
-        except Exception as e:                                      # API error or cap: try the next model
+        except Exception as e:                                      # API error or deadline: next model
             errs = [f"{model}: {type(e).__name__}: {str(e)[:200]}"]
-            if time.time() - t0 > cap_s - 5:
-                break
+        if not plan and last and isinstance(last.get("checks"), list):   # keep checks that validate alone
+            keep, rejected = [], []
+            for c in last["checks"][:6]:
+                one = {"summary": str(last.get("summary", ""))[:400],
+                       "declared_behavior_change": bool(last.get("declared_behavior_change")), "checks": [c]}
+                e = _errors(one, touched, surface)
+                (rejected.append({"id": c.get("id") if isinstance(c, dict) else None, "errors": e[:3]}) if e else keep.append(c))
+            if keep:
+                plan, source = {**one, "checks": keep}, "planner_partial"
+        if plan or time.time() > deadline - 5:
+            break
     added = plan["checks"] if plan else []
     out = {"source": source, "model": model if plan else None, "latency_ms": int((time.time() - t0) * 1000),
            "summary": plan["summary"] if plan else "planner unavailable: mandatory checks only",
            "declared_behavior_change": bool(plan and plan["declared_behavior_change"]),
            "checks": mandatory + added, "mandatory_ids": [c["id"] for c in mandatory],
-           "errors": errs if not plan else [], "model_calls": calls}
+           "errors": errs if not plan else [], "rejected": rejected, "model_calls": calls}
     out["plan_sha256"] = hashlib.sha256(json.dumps(out["checks"], sort_keys=True).encode()).hexdigest()
     return out

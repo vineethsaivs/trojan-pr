@@ -22,6 +22,8 @@ def hist(cid, which="intro"):
         print(f"  {c['id']:3} {c['family']:15} {c['adapter']:9} {c['call']['target'].split(':')[-1]}  {c['params']}"[:170])
     if p["errors"]:
         print("  planner errors:", p["errors"][:3])
+    for r_ in p.get("rejected", []):
+        print(f"  rejected {r_['id']}: {'; '.join(r_['errors'])[:150]}")
     print("statuses:", " / ".join(f"{l} {r['statuses'][l]}" for l in r["labels"]))
     head = r["labels"][1]
     for k, cell in sorted(r["per"][head].items()):

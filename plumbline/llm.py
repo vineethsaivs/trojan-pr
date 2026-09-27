@@ -17,9 +17,10 @@ def client():
     return _client
 
 
-def chat(role, model, messages, tools=None, tool_choice=None, max_tokens=4000, temperature=0, timeout=60):
+def chat(role, model, messages, tools=None, tool_choice=None, max_tokens=4000, temperature=0, timeout=60,
+         deadline=None):
     """-> (message, record). Retries 429, 5xx, timeouts and connection errors with backoff
-    (rate limits are unpublished, VULTR.md)."""
+    (rate limits are unpublished, VULTR.md), never past `deadline` (epoch seconds)."""
     kw = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature,
           "timeout": timeout}
     if tools:
@@ -29,6 +30,10 @@ def chat(role, model, messages, tools=None, tool_choice=None, max_tokens=4000, t
     last = None
     for attempt in range(4):
         t0 = time.time()
+        if deadline:
+            kw["timeout"] = min(timeout, deadline - t0)
+            if kw["timeout"] < 3:
+                raise last or TimeoutError(f"{role}: deadline reached")
         try:
             r = client().chat.completions.create(**kw)
             break

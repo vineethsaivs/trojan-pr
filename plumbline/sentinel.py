@@ -169,7 +169,7 @@ def run_pr(cid, which="intro", harness="harness", run_id=None, conn=None):
                   "subject": subject, "verdict": verdict, "reason": reason,
                   "statuses": {l: _status(per[l]) for l in labels},
                   "plan": {k: plan[k] for k in ("source", "model", "latency_ms", "plan_sha256", "summary",
-                                                 "declared_behavior_change", "checks", "mandatory_ids", "errors")},
+                                                 "declared_behavior_change", "checks", "mandatory_ids", "errors", "rejected")},
                   "results": results,
                   "execution": {"sandbox_host": os.environ["SANDBOXD_URL"], "runtime": j0.get("runtime"),
                                 "image_id": j0.get("image_id"), "harness": harness, "harness_sha256": j0.get("harness_sha256"),
