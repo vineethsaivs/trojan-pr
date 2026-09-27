@@ -12,5 +12,6 @@ deploy-control:
 	$(RSYNC) plumbline harness sandboxd infra corpus Makefile pl-control:/opt/plumbline/
 	(git rev-parse HEAD; git diff --quiet HEAD || echo dirty) | tr '\n' ' ' | ssh pl-control 'cat > /opt/plumbline/GIT_SHA'
 	rsync -az bakeoff/inputs/ pl-control:/var/lib/plumbline/inputs/
+	rsync -az --exclude raw --exclude inputs bakeoff pl-control:/opt/plumbline/   # no --delete: raw outputs live on VM1
 
 .PHONY: deploy-sandbox deploy-control

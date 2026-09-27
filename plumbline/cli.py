@@ -1,6 +1,7 @@
 """python -m plumbline.cli keygen <private.pem>      (prints the public key; VM1)
 python -m plumbline.cli hist <case> [intro|fix]       (historical Sentinel run; VM1)
-python -m plumbline.cli verify <receipt.json> --pin <keys/plumbline.pub>   (anywhere; exit 0 = valid)"""
+python -m plumbline.cli verify <receipt.json> --pin <keys/plumbline.pub>   (anywhere; exit 0 = valid)
+python -m plumbline.cli queue [harness-frozen-v1]    (Sentinel triple control: 12 intro runs, then 12 fix runs; resumable)"""
 import base64, json, os, sys
 
 
@@ -32,6 +33,31 @@ def hist(cid, which="intro"):
     print(f"receipt: {r['receipt_path']}  wall: {r['wall_ms'] / 1000:.1f} s")
 
 
+H = ["ds-8313", "ds-8533", "st-3921", "ds-8334", "ray-65747", "st-4019",
+     "st-3868", "ray-65535", "ray-65790", "zoo-1286", "unsloth-11337", "unsloth-11470"]
+
+
+def queue(harness="harness-frozen-v1"):
+    """PLAN 4.9. Skips (case, which) pairs that already have a finished run on this harness."""
+    import time
+    from plumbline import db
+    from plumbline.sentinel import run_pr
+    conn = db.connect()
+    for which in ("intro", "fix"):
+        for cid in H:
+            done = conn.execute("SELECT count(*) FROM runs WHERE case_id=? AND id LIKE ? AND status='done' "
+                                "AND json_extract(subject, '$.harness')=?", (cid, f"{cid}-{which}-%", harness)).fetchone()[0]
+            if done:
+                continue
+            t = time.time()
+            try:
+                r = run_pr(cid, which, harness=harness, conn=conn)
+                print(f"{cid} {which}: {r['verdict']} {r['statuses']} plan={r['plan']['source']} "
+                      f"added={len(r['plan']['checks']) - len(r['plan']['mandatory_ids'])} {time.time() - t:.0f} s", flush=True)
+            except Exception as e:
+                print(f"{cid} {which}: ERROR {type(e).__name__}: {str(e)[:200]}", flush=True)
+
+
 def verify(path, pin_path):
     from plumbline import receipt
     ok, msg = receipt.verify(json.load(open(path)), open(pin_path).read().strip())
@@ -45,6 +71,8 @@ if __name__ == "__main__":
         keygen(a[1])
     elif a[:1] == ["hist"]:
         hist(a[1], a[2] if len(a) > 2 else "intro")
+    elif a[:1] == ["queue"]:
+        queue(*a[1:2])
     elif a[:1] == ["verify"] and "--pin" in a:
         verify(a[1], a[a.index("--pin") + 1])
     else:

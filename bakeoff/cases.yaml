@@ -1,0 +1,255 @@
+# Pre-registered bake-off cases (PLAN 2.2, 4.4, 4.8). Commits and input hashes from bakeoff/fetch_inputs.py.
+# split: dev = templates were shaped on these (in-sample); held-out = frozen before their first Sentinel run.
+cases:
+  - id: ds-8313
+    split: dev
+    repo: deepspeedai/DeepSpeed
+    scope_at_intro: "deepspeed/runtime/utils.py"
+    function: "clip_grad_norm_"
+    mechanism_class: "per-tensor norms squared, then 1/p root"
+    trigger_set: "norm_type != 2"
+    intro_pr: 4915
+    intro_path: "deepspeed/runtime/utils.py"
+    intro_g2_sha256: cd3422cb09609a632b04a8ff04ef666201b745475f1ad85495d4aff25bdac0db
+    intro_scope_sha256: 9aa78c7bd41d9ef7d9fef8c2b523c9fce69d9e8ea9752309dc523506a0c2384d
+    intro_meta_sha256: 505b28a9c149a293be60dbd9df9e62ab186e8eb9e7c731a447700904e6b1276f
+    fix_pr: 8313
+    fix_path: "deepspeed/runtime/utils.py"
+    fix_g2_sha256: c6f2392dff22ac61ab57d7e2193ff3a73eebcbcb3719521f16021a76f6305bad
+    fix_scope_sha256: 7abe78ded0be93f1ac41bc6cfde6035ac594cf8857784d96027e910236db9c67
+    fix_meta_sha256: c387a80eb895e658785485d21f476ae9def088ae9ed673eb91f61ed0c0b9606d
+    pre: 4f477328c411270cf378a2318bc4f51c512ad2c8  # path at commit: deepspeed/runtime/utils.py
+    intro: 961bc85624174e8ca8ee7626b3f3b53c6c768085  # path at commit: deepspeed/runtime/utils.py
+    fixp: 92843ad706067f0ab551a06a079a8923dcde27b4  # path at commit: deepspeed/runtime/utils.py
+    fix: 37cf8f240b1eadb178df462d8b80d356beabcf8b  # path at commit: deepspeed/runtime/utils.py
+  - id: ds-8533
+    split: dev
+    repo: deepspeedai/DeepSpeed
+    scope_at_intro: "deepspeed/runtime/zero/muon/original_muon.py"
+    function: "zeropower_via_gram_newtonschulz"
+    mechanism_class: "cast to fp16 before normalizing"
+    trigger_set: "large gradient magnitude, loss scaling"
+    intro_pr: 7953
+    intro_path: "deepspeed/runtime/zero/muon/original_muon.py"
+    intro_g2_sha256: 4dca373a28a85309954058814f9a38335582c51f6fbdf7b0ba4ad26dcda844d6
+    intro_scope_sha256: d096a354c89b2c8bab05e028117be638660528e2b3c1a5fedbfa1857bfdda305
+    intro_meta_sha256: db6aedfacad9e41047f3d6427f6beb8ac236e37fbe9faa602445b2cb3594df28
+    fix_pr: 8533
+    fix_path: "deepspeed/runtime/zero/muon/original_muon.py"
+    fix_g2_sha256: edd03d22da36b29134403c9d4435c552874b65b1d6eeebd95ec9fec4272cf8ac
+    fix_scope_sha256: 87c8b1f26a748f87127b65db3bd0fa0f6a171fe54784172d3c7540dc575145af
+    fix_meta_sha256: 91ecf66be73a25884def6167a329310aa7405e6e7391aa36d9a3288a2d8a5c1d
+    pre: 5b441027b76938e4c31c0b316a99ce23b028e016  # path at commit: deepspeed/runtime/zero/muon/original_muon.py
+    intro: 8a77f381a4d8f3bf65747ac571b94324eaa4a29a  # path at commit: deepspeed/runtime/zero/muon/original_muon.py
+    fixp: 0d4aa274731857561ebb479552d4223a99a0cedc  # path at commit: deepspeed/runtime/zero/muon/original_muon.py
+    fix: 1663b5b59aaf58ec6accb1aca326e120e6b1c279  # path at commit: deepspeed/runtime/zero/muon/original_muon.py
+  - id: st-3921
+    split: dev
+    repo: huggingface/sentence-transformers
+    scope_at_intro: "sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py"
+    function: "compute_gor"
+    mechanism_class: "zero denominator batch_size*(batch_size-1)"
+    trigger_set: "batch of 1"
+    intro_pr: 3654
+    intro_path: "sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py"
+    intro_g2_sha256: 5e82813aaa08f13e14328a4dc03226e1b6cd77a423d03092b0243a0e5b45efde
+    intro_scope_sha256: c4cd079ea476642f8e0797e9f932bc55092e5c614485e8994ff0d420c40f5fb7
+    intro_meta_sha256: bb2ce4ee7deddb89f987764b2a08ae57fc18dece189c091bbfbb9ec46a2c28f3
+    fix_pr: 3921
+    fix_path: "sentence_transformers/sentence_transformer/losses/global_orthogonal_regularization.py"
+    fix_g2_sha256: 659475a70a1314e33f80362c82825800d73c4254228935dd52875276e09cc8b8
+    fix_scope_sha256: fef91f472886af727508c3708f4ef58da7caa43388877633fecee1fb923bbceb
+    fix_meta_sha256: 9e316760d8a22ae2d3a6a3ef0c6f66043542a23aa01bcdea6dcfff87e741b76a
+    pre: b099b9e9511513e245286e9a146f7d98c67590d2  # path at commit: absent
+    intro: 2caeddff7d65bbac9642d55835caf10952532716  # path at commit: sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py
+    fixp: b806a61ab679f44beaf83e658b4d1b7176f62e39  # path at commit: sentence_transformers/sentence_transformer/losses/global_orthogonal_regularization.py
+    fix: 655121f9be2d2caac1cb7859ff62340cc9878258  # path at commit: sentence_transformers/sentence_transformer/losses/global_orthogonal_regularization.py
+  - id: ds-8334
+    split: dev
+    repo: deepspeedai/DeepSpeed
+    scope_at_intro: "deepspeed/runtime/data_pipeline/curriculum_scheduler.py"
+    function: "fixed_linear/fixed_root difficulty"
+    mechanism_class: "floor to multiple of step, no lower clamp"
+    trigger_set: "min not a multiple of step"
+    intro_pr: 1307
+    intro_path: "deepspeed/runtime/data_pipeline/curriculum_scheduler.py"
+    intro_g2_sha256: 7d8f8337cab6c0f60b05acafc2896206d6785d217ab528ffe449750a280ac793
+    intro_scope_sha256: 0aaa38d73d6c7c0c07114bba97f1878a578c89d42e6b87bbeee18840fee18874
+    intro_meta_sha256: c05283317ec246286950989a2e52ebe146e0972e872d237df82667c5599f86e9
+    fix_pr: 8334
+    fix_path: "deepspeed/runtime/data_pipeline/curriculum_scheduler.py"
+    fix_g2_sha256: aac267903963c9a01070e1348063f78d5431fb3d3c4b9bedf08767774b24b22e
+    fix_scope_sha256: 8cf2bec52ad6586efc4757694ad864c6d84f72732593000be2db3fa9e8147484
+    fix_meta_sha256: b98662d80d75aefcf0dc368df9a4368a0d858a2c6e0b0e95f3d37abd0fda5250
+    pre: 504893aea40004cf9916ddc3ca0ddbfd0e784c8d  # path at commit: absent
+    intro: b2b34ae342d6f851226e995f2e1021d12e761093  # path at commit: deepspeed/runtime/data_pipeline/curriculum_scheduler.py
+    fixp: c7eed1594d3de902796cf81ce6e7b84efe5979d8  # path at commit: deepspeed/runtime/data_pipeline/curriculum_scheduler.py
+    fix: 8e09ed2acde363d5efcf3577f9586e9f4fcba672  # path at commit: deepspeed/runtime/data_pipeline/curriculum_scheduler.py
+  - id: ray-65747
+    split: dev
+    repo: ray-project/ray
+    scope_at_intro: "python/ray/tune/pbt.py"
+    function: "explore"
+    mechanism_class: "int() truncates after x1.2 / x0.8"
+    trigger_set: "small integers (< 5)"
+    intro_pr: 1478
+    intro_path: "python/ray/tune/pbt.py"
+    intro_g2_sha256: c9090870e47bf65f86180763fea36fcc7e33d47aa5eb3b36b397747a25c73f1c
+    intro_scope_sha256: a69b2302cc377fe7586ee9499475e2fa4e341c18b4f01e75ab9e02f9c51ac7d4
+    intro_meta_sha256: f1272afbad2a5d5bee59dd58451cc51cbf5bec789f344045f2ac0a164ffdf4cf
+    fix_pr: 65747
+    fix_path: "python/ray/tune/schedulers/pbt.py"
+    fix_g2_sha256: 98586c5f399fe02ec4e4e520af75d7aeeba2e7fd841abc81eff7d11e6d7869ec
+    fix_scope_sha256: bc40e71a94a65523579096f8060a62631b9765ac5147513581c1b1dd1889c360
+    fix_meta_sha256: 27e20e66bc6fd428c819db9a8d980c39027eb42957ed6dbe311fe67c3bda072e
+    pre: a936468f99b5389c45d882347d5bf7a61f77f240  # path at commit: python/ray/tune/pbt.py
+    intro: b948405532b4fc0c8d4cea80eea9d495cc3d2821  # path at commit: python/ray/tune/pbt.py
+    fixp: 8c9e87cd2d77af4eb2a6fdda8fc82a9d948bffad  # path at commit: python/ray/tune/schedulers/pbt.py
+    fix: e9456df39bfed41ce054a55468a7985b42d5eea5  # path at commit: python/ray/tune/schedulers/pbt.py
+  - id: st-4019
+    split: dev
+    repo: huggingface/sentence-transformers
+    scope_at_intro: "sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py"
+    function: "batch_hard_triplet_soft_margin_loss"
+    mechanism_class: "log1p(exp(x)) overflows"
+    trigger_set: "large distance gap"
+    intro_pr: 299
+    intro_path: "sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py"
+    intro_g2_sha256: 46ae6743a0c18e6962b6387847f169b2e253f7525987b496e3bb286223a55579
+    intro_scope_sha256: 8522b61bf7f55f1738c34fdfc7f125f5a1eeff0c3156d27d2150f4f005199dde
+    intro_meta_sha256: 4031c561bba0fdbe4bafdff4cf27e9762a1d1afa89c8fc7aa16f15bbfc4593d0
+    fix_pr: 4019
+    fix_path: "sentence_transformers/sentence_transformer/losses/batch_hard_soft_margin_triplet.py"
+    fix_g2_sha256: b41138a6854a546a943170b15ee131b072aee4ee53e4a87ab536fd9cfd9cf79c
+    fix_scope_sha256: c80bd29c1dab0f7bf1ee690e874102f776b1a090e4fa9e46d517c00eeec0d10f
+    fix_meta_sha256: c16b3aab50eb26682694b41b797cf673af53e17b5594ba916d886906ca738d2d
+    pre: c9c8dfccdeac53f0592bb64da68df85fe789547a  # path at commit: sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py
+    intro: e7f7cbe4c4e694ec1457daa6e56b5bbf856d9719  # path at commit: sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py
+    fixp: af1f4efcbbd3dc990b7e9b2ae281fb0843bc699e  # path at commit: sentence_transformers/sentence_transformer/losses/batch_hard_soft_margin_triplet.py
+    fix: f3db086191749a0707547acd1943236871e8195c  # path at commit: sentence_transformers/sentence_transformer/losses/batch_hard_soft_margin_triplet.py
+  - id: st-3868
+    split: held-out
+    repo: huggingface/sentence-transformers
+    scope_at_intro: "sentence_transformers/sparse_encoder/losses/SparseCoSENTLoss.py"
+    function: "__init__ default similarity_fct"
+    mechanism_class: "matrix similarity where pairwise is needed"
+    trigger_set: "any batch"
+    intro_pr: 3401
+    intro_path: "sentence_transformers/sparse_encoder/losses/SparseCoSENTLoss.py"
+    intro_g2_sha256: a10980b2ecafc0837d54d82672ccc1252c2b642ed2c7e5e4adf096780471b4cc
+    intro_scope_sha256: 92d971382a27a6e0d6c51eada4b1297622a7303ed9cef088dc6adc7071bfb8fc
+    intro_meta_sha256: 4b2452c7f7752efa32c67150b3e350a8e1342dcc2ec8b31ba02e73605ce6d268
+    fix_pr: 3868
+    fix_path: "sentence_transformers/sparse_encoder/losses/sparse_cosent.py"
+    fix_g2_sha256: 7e53ed77b819c21d290ade68d723282feb454da6c557dcddd238c277f8439a21
+    fix_scope_sha256: 85d2b5e367b6588507c972260b7cf438bcd36401bd5d110c5d95e5e01d82e0a5
+    fix_meta_sha256: 4a598aaca84cffef902c2f4b6ed20c604ab07fdd1ae9ef94d53f440fba232aa2
+    pre: ddcb0569b78a24b823803543082663132bb7b25a  # path at commit: absent
+    intro: fca9068a03e3cc22e438462f5e174efa36656cd6  # path at commit: sentence_transformers/sparse_encoder/losses/SparseCoSENTLoss.py
+    fixp: 756a16019a1206c5687ee43edc9cd190b2d1f193  # path at commit: sentence_transformers/sparse_encoder/losses/sparse_cosent.py
+    fix: 4713cf11b0dce44a16d437ea0e76fc80c6791425  # path at commit: sentence_transformers/sparse_encoder/losses/sparse_cosent.py
+  - id: ray-65535
+    split: held-out
+    repo: ray-project/ray
+    scope_at_intro: "python/ray/tune/search/sample.py"
+    function: "Quantized.sample"
+    mechanism_class: "q == 1 early return skips rounding for floats"
+    trigger_set: "quniform/qloguniform with q=1"
+    intro_pr: 28187
+    intro_path: "python/ray/tune/search/sample.py"
+    intro_g2_sha256: 31ee97213418e91a970f38e7d7c2d8c8111d0d6272f31450b4ee0694c6efa5a2
+    intro_scope_sha256: 7d590b02f541b372af6e252679109f2674d5508e3726945bd25807882b7a16bc
+    intro_meta_sha256: f72e9508c140568f0482a67b3cd58f46af9420adfc648e08987b3e8b26c627f8
+    fix_pr: 65535
+    fix_path: "python/ray/tune/search/sample.py"
+    fix_g2_sha256: 649d37594248be00f36b5c1bf774475d2b8d309e6d6beb89a0fa3c76d6f12497
+    fix_scope_sha256: a7b01944d01eefa290093e5dbbae541c63d306836623aa6f7646286fb4618039
+    fix_meta_sha256: 732273ebce38fe316e16a6bc90b0289ebcbd6f0fbb51ed84c1d6784a9e96ec07
+    pre: e63b405b61b30984bf16a3ccc2a6332e73631347  # path at commit: python/ray/tune/search/sample.py
+    intro: d59d8c6268ef2f0bef49c229c208fcdaed21362a  # path at commit: python/ray/tune/search/sample.py
+    fixp: 5b114d0bb01577ab7ef6635ece1929431b170b9f  # path at commit: python/ray/tune/search/sample.py
+    fix: e936a4b09490ee881265004fba5acb2dbd5a5a74  # path at commit: python/ray/tune/search/sample.py
+  - id: ray-65790
+    split: held-out
+    repo: ray-project/ray
+    scope_at_intro: "python/ray/tune/schedulers/pbt.py"
+    function: "_quantiles"
+    mechanism_class: "trials[-k:] with k = 0 returns all"
+    trigger_set: "quantile_fraction = 0"
+    intro_pr: 4912
+    intro_path: "python/ray/tune/schedulers/pbt.py"
+    intro_g2_sha256: 153863da18dfe8f3f1570d4a92bf689f62131dc225984bf4a0bcc4c0d1d3cb70
+    intro_scope_sha256: c71d8ca9eb521cd931da1d663fdd2d3751b4fb97c3d3954d88036ac4d83aba59
+    intro_meta_sha256: 725fcba278addd3ba8434691cd67d25bd75292f00d31ba77116b50c549d74d4e
+    fix_pr: 65790
+    fix_path: "python/ray/tune/schedulers/pbt.py"
+    fix_g2_sha256: de61f68ce0120fd3c137bb01a32144032d3bc13d734bf9165ff17b9c1fd0facb
+    fix_scope_sha256: e9f25eda9270e4bdfe2a548506abdf369ab05e563838b9b8b65eb39375b4bef4
+    fix_meta_sha256: 91d5b089e08feb442b72cc37c0b915ced4a2c3bbb04e2ee37a116e5627e4e222
+    pre: b674c4a5ba6cc62d4535e2e016b248edc28b53e5  # path at commit: python/ray/tune/schedulers/pbt.py
+    intro: c2253d2313f5a43c20658319063e1713ad695e67  # path at commit: python/ray/tune/schedulers/pbt.py
+    fixp: 0dc4886da85a47ea236b45e7976e3ed930268ffa  # path at commit: python/ray/tune/schedulers/pbt.py
+    fix: 8c9e87cd2d77af4eb2a6fdda8fc82a9d948bffad  # path at commit: python/ray/tune/schedulers/pbt.py
+  - id: zoo-1286
+    split: held-out
+    repo: unslothai/unsloth-zoo
+    scope_at_intro: "unsloth_zoo/rl_replacements.py"
+    function: "grpo_compute_loss"
+    mechanism_class: "normalizer can be 0"
+    trigger_set: "fully masked batch"
+    intro_pr: 308
+    intro_path: "unsloth_zoo/rl_replacements.py"
+    intro_g2_sha256: 90c49974b9ebce365470add67fee673e5a635d081654880dfce1c297dc6112e8
+    intro_scope_sha256: a5f8cf03d5573ef147f557a2526a7cee1a09c265c5d8706957682ec18880fa81
+    intro_meta_sha256: 00b2f21307adb89898d7d9f777b8022de8da86f28069f9c5fa68cbe9264c5b55
+    fix_pr: 1286
+    fix_path: "unsloth_zoo/rl_replacements.py"
+    fix_g2_sha256: 5ba68cabf1b899dae84a5044f31a6ccc8647eb15615701466013dd38a31f503e
+    fix_scope_sha256: 136a7cf6713c935f5bc0bcbf4ed972f8d1860d2e6a05756f3c086a2ab8c5e076
+    fix_meta_sha256: 29f3a4b9a1a5fe46885e0cf53110c927f105edfac3d0cfff183d06ac6a75f1ff
+    pre: 75106e9553eb59a9e6e433953156d84ccbb4b5f4  # path at commit: unsloth_zoo/rl_replacements.py
+    intro: f690a5aaa3eccab272f6b64c990a93a7a64a0b60  # path at commit: unsloth_zoo/rl_replacements.py
+    fixp: ac41049b6ae13f560d6ae3bf52da47ac6f0e0940  # path at commit: unsloth_zoo/rl_replacements.py
+    fix: 937d9434a2281fcf10fbb9ecf2d3f62888819085  # path at commit: unsloth_zoo/rl_replacements.py
+  - id: unsloth-11337
+    split: held-out
+    repo: unslothai/unsloth
+    scope_at_intro: "unsloth/models/rl_replacements.py (+ zoo)"
+    function: "compute_loss"
+    mechanism_class: "stale training GA divisor used in eval"
+    trigger_set: "GA > 1 with eval"
+    intro_pr: 3390
+    intro_path: "unsloth/models/rl_replacements.py"
+    intro_g2_sha256: 77b4e46c67d1a44f7de3c2ddbbecc16cde8e881053f13ac0529512743a614892
+    intro_scope_sha256: 0b961749bcd2bc50e0f54b5483c8a1062ecde6eabb84d49f1f718bb54f2418e1
+    intro_meta_sha256: 03b47cb3b4d6cb1c6871c2fdd500e6c37d696396b077c61f8b4eb276bcf5d233
+    fix_pr: 11337
+    fix_path: "unsloth/models/rl_replacements.py"
+    fix_g2_sha256: f3551d07b0293b911bef811e77da47be6e7e9b816747dbde57d7749ef5bf16ed
+    fix_scope_sha256: 35a46b88b344ce83a546d3359d2f53726bd3ee63927d5425159e35bf561b2fb6
+    fix_meta_sha256: 031cf7adcde7ba8e3df5f1d80f5388d9056941556aa2aab9bad073271e3971f4
+    pre: 0e766b28f058f384c5e8cfeb891225653655da2c  # path at commit: unsloth/models/rl_replacements.py
+    intro: 45b1c7f7c831f20d41a4d74dd668a8065e08cb9f  # path at commit: unsloth/models/rl_replacements.py
+    fixp: 43e7dd302ee859b9cd047efc548afd985e62676a  # path at commit: unsloth/models/rl_replacements.py
+    fix: 06c1bb400cc6e277be5c144d2a0978ab835dcc3d  # path at commit: unsloth/models/rl_replacements.py
+  - id: unsloth-11470
+    split: held-out
+    repo: unslothai/unsloth
+    scope_at_intro: "unsloth/trainer.py"
+    function: "_create_unsloth_optimizer"
+    mechanism_class: "weight_decay read from optimizer_kwargs, which lacks it"
+    trigger_set: "embedding_learning_rate set"
+    intro_pr: 506
+    intro_path: "unsloth/trainer.py"
+    intro_g2_sha256: 60704a3401f0743662b9d52a0233c62720634443ab8605a390d6f1d7e83181c5
+    intro_scope_sha256: 4967ffc204fe02e30664511473dbfb072989423fdf6ef4a738bbacbd41714a69
+    intro_meta_sha256: 3eccb5bcdc0dc59f4988fe3fa63a8e07f8c845fcf563370873eb7db15095e4a2
+    fix_pr: 11470
+    fix_path: "unsloth/trainer.py"
+    fix_g2_sha256: 962b78b0bd23f34570cb79f870b40e0e3b3e16b935a0c780a0a8f04f5bb49add
+    fix_scope_sha256: 8a45b12c7829a79ecac45008cbf22f1c13f89e84df5aec0db2727b3d3029fa11
+    fix_meta_sha256: be8a3677f62375ca7c66997b84584ba144886bd149ec1c5f64ee3b41a7ab0425
+    pre: dde6a0f0d36ccd5a0c58a5087b6ccc4b49c6c732  # path at commit: absent
+    intro: 72b19da6bd55cf3b1835d30f42914f65529e304b  # path at commit: unsloth/trainer.py
+    fixp: bbfabb2e5446096f647159f61b7c7243403b8b8c  # path at commit: unsloth/trainer.py
+    fix: ed004ac705b96cfb071876b45bffab1f6ba5ca52  # path at commit: unsloth/trainer.py

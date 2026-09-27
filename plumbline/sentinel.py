@@ -134,7 +134,8 @@ def run_pr(cid, which="intro", harness="harness", run_id=None, conn=None):
     conn = conn or db.connect()
     subject = {"repo": ci["repo"], "pr": meta.get("number"), "url": meta.get("url"), "title": meta.get("title"),
                "base_sha": ci["commits"][base_l]["sha"], "head_sha": ci["commits"][head_l]["sha"],
-               "diff_sha256": hashlib.sha256(diff.encode()).hexdigest(), "kind": "hist", "case": cid, "which": which}
+               "diff_sha256": hashlib.sha256(diff.encode()).hexdigest(), "kind": "hist", "case": cid, "which": which,
+               "harness": harness}
     db.upsert(conn, "runs", id=run_id, kind="hist", case_id=cid, subject=subject, status="planning",
               created_at=datetime.now(timezone.utc).isoformat())
     head_src = open(os.path.join(d, "scope.py")).read()

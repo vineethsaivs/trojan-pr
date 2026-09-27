@@ -1,0 +1,97 @@
+{
+ "fetched_at": "2026-09-27T02:55:25+00:00",
+ "source": "GET https://api.vultrinference.com/v1/models",
+ "headline_reviewer": [
+  "deepseek-v4-flash-0731"
+ ],
+ "planner": "deepseek-v4-flash-0731",
+ "excluded": {
+  "glm-5.3": "pilot on index case unsloth-10842 (not scored): no content at max_tokens 6000 (60 s) or 32000 (218 s, all reasoning); thinking off: 8000 tokens of analysis, no JSON",
+  "minimax-m3": "pilot: 16000 tokens, no content",
+  "qwen3.8-27b": "pilot: HTTP 5xx upstream",
+  "glm-5.2": "pilot: HTTP 5xx upstream",
+  "qwen3.8-flash-next": "pilot: HTTP 5xx upstream"
+ },
+ "models": [
+  {
+   "id": "bge-reranker-v2-m3",
+   "created": 1789490421
+  },
+  {
+   "id": "deepseek-v4-flash-0731",
+   "created": 1786979709
+  },
+  {
+   "id": "deepseek-v4.1-flash",
+   "created": 1789449526
+  },
+  {
+   "id": "glm-5.2",
+   "created": 1788472794
+  },
+  {
+   "id": "glm-5.3",
+   "created": 1788472794
+  },
+  {
+   "id": "glm-5.3-flash",
+   "created": 1788837087
+  },
+  {
+   "id": "glm-5.x-menthol",
+   "created": 1788837089
+  },
+  {
+   "id": "laguna-s-2.1",
+   "created": 1788837090
+  },
+  {
+   "id": "mimo-v2.6-flash-rl",
+   "created": 1790240998
+  },
+  {
+   "id": "mimo-v2.6-pro-rl",
+   "created": 1790201164
+  },
+  {
+   "id": "minimax-m3",
+   "created": 1787633092
+  },
+  {
+   "id": "muse-glimmer-30b",
+   "created": 1789531165
+  },
+  {
+   "id": "nemotron-3-nano-omni-30b-a3b-reasoning",
+   "created": 1773258474
+  },
+  {
+   "id": "nemotron-3.5-content-safety",
+   "created": 1780598852
+  },
+  {
+   "id": "qwen3-embedding-4b",
+   "created": 1790476080
+  },
+  {
+   "id": "qwen3.8-27b",
+   "created": 1787624247
+  },
+  {
+   "id": "qwen3.8-flash-next",
+   "created": 1789485493
+  },
+  {
+   "id": "vultron-retriever-core-qwen3.5-4.5b",
+   "created": 1783002744
+  },
+  {
+   "id": "vultron-retriever-flash-qwen3.5-0.8b",
+   "created": 1783002800
+  },
+  {
+   "id": "z-image-turbo",
+   "created": 1787526201
+  }
+ ]
+}

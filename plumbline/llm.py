@@ -21,8 +21,9 @@ def chat(role, model, messages, tools=None, tool_choice=None, max_tokens=4000, t
          deadline=None):
     """-> (message, record). Retries 429, 5xx, timeouts and connection errors with backoff
     (rate limits are unpublished, VULTR.md), never past `deadline` (epoch seconds)."""
-    kw = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature,
-          "timeout": timeout}
+    kw = {"model": model, "messages": messages, "max_tokens": max_tokens, "timeout": timeout}
+    if temperature is not None:                     # None = provider default (bake-off protocol)
+        kw["temperature"] = temperature
     if tools:
         kw["tools"] = tools
     if tool_choice:
