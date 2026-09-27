@@ -1,4 +1,4 @@
-{% set NAME = {"pre": "before the PR", "intro": "the PR", "fixp": "before my fix", "fix": "my fix"} %}
+{% set NAME = {"pre": "before the PR", "intro": "the PR", "fixp": "before my fix", "fix": "my fix", "base": "before the PR", "head": "the PR"} %}
 {% set SOURCE = {"planner": "planner", "planner_repaired": "planner, repaired after schema errors", "planner_partial": "planner, invalid checks dropped", "prepass_default": "planner unavailable: mandatory checks only"} %}
 {% set DECISION = {"detected": "broken by the PR", "detected_new": "fails on new code", "clean": "holds", "clean_new": "holds on new code", "preexisting": "already failing", "improved": "fixed by the PR", "inconclusive": "inconclusive"} %}
 {% macro num(x) -%}{% if x is number %}{{ "%.3g"|format(x) }}{% else %}{{ x }}{% endif %}{%- endmacro %}

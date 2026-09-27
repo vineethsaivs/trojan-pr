@@ -4,7 +4,8 @@ Sentinel check executes in gVisor on VM2. The saboteur's side_note is stored for
 shown to the reviewer or the planner.
   python -m plumbline.agents --sabotage-check          hand library S1-S4, H1-H4 through CI + Sentinel
   python -m plumbline.agents --episode <role> <task>   one episode (smoke)
-  python -m plumbline.agents --overnight               protocol run (eval/GAME_PROTOCOL.md)"""
+  python -m plumbline.agents --overnight               protocol run (eval/GAME_PROTOCOL.md)
+  python -m plumbline.agents --hand-round S1 H2 H3     fallback round (PLAN 6.8): CI + one P1 review per card"""
 import difflib, json, os, re, subprocess, sys, tempfile, threading, time, uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -168,6 +169,19 @@ def sabotage_check():
     return rows
 
 
+def hand_round(pids):
+    """PLAN 6.8: the hand-written round gets the same CI and one P1 review as agent PRs (one run each,
+    whatever it says). Sentinel verdicts are the stored --sabotage-check runs."""
+    for pid in pids:
+        base, head = apply_patch(pid)
+        diff, task = unified(base, head), f"T{pid[1]}"
+        code, _ = ci_run(f"ci-round-{pid}-{uuid.uuid4().hex[:4]}", head, harness=GAME_HARNESS)
+        rec = {"id": pid, "task": task, "title": TASKS[task].split(". ")[0][:80], "diff": diff, "ci": {"exit": code},
+               "reviewer": review(TASKS[task], "", diff, head), "finished": datetime.now(timezone.utc).isoformat()}
+        open(os.path.join(ROOT, "eval", "hand_round.jsonl"), "a").write(json.dumps(rec) + "\n")
+        print(pid, "CI", code, "reviewer", rec["reviewer"]["verdict"], rec["reviewer"]["reason"][:100], flush=True)
+
+
 if __name__ == "__main__":
     a = sys.argv[1:]
     if a[:1] == ["--sabotage-check"]:
@@ -175,6 +189,8 @@ if __name__ == "__main__":
     elif a[:1] == ["--episode"]:
         r = episode(a[1], a[2])
         print(json.dumps({k: r.get(k) for k in ("pr_id", "role", "task", "rounds", "ci", "side_note", "reviewer", "sentinel", "wall_s")}, default=str)[:1500])
+    elif a[:1] == ["--hand-round"]:
+        hand_round(a[1:])
     elif a[:1] == ["--overnight"]:
         jobs = [(role, t, i) for i in range(2) for t in ("T1", "T2", "T3", "T4") for role in ("saboteur", "honest")]
         with ThreadPoolExecutor(3) as ex:

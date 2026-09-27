@@ -1,4 +1,4 @@
-// Stage keys: S stage mode, P replay, R and T reserved for the arena cards.
+// Stage keys: S stage mode, P replay; on /arena T timer, R reveal, 0 reset.
 (function () {
   var html = document.documentElement;
 
@@ -12,9 +12,38 @@
       try { localStorage.setItem("pl-stage", on ? "1" : "0"); } catch (_) {}
     } else if (k === "p") {
       location.href = "/replay";
-    } else if (k === "r" || k === "t") {
-      // ponytail: reveal (R) and 5 s timer (T) land with the arena cards; no cards, no action.
+    } else if (k === "r" || k === "t" || k === "0") {
       if (!document.querySelector(".arena-card")) return;
+      if (k === "r") reveal(true); else if (k === "0") reveal(false); else timer();
+    }
+  });
+
+  // Arena (PLAN 6.6): T starts a 5 s count, R shows the stored verdicts, 0 resets.
+  var tick = null;
+  function reveal(on) {
+    var a = document.getElementById("arena"), b = document.getElementById("reveal"), t = document.getElementById("timer");
+    if (!a) return;
+    a.classList.toggle("revealed", on);
+    if (b) b.textContent = on ? "Hide the verdicts" : "Reveal the verdicts";
+    clearInterval(tick);
+    if (t) { t.hidden = true; t.classList.remove("done"); }
+    var band = on && document.querySelector(".is-trojan .card-band");
+    if (band) band.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+  function timer() {
+    var t = document.getElementById("timer"), n = 5;
+    if (!t) return;
+    clearInterval(tick);
+    t.hidden = false; t.classList.remove("done"); t.textContent = n;
+    tick = setInterval(function () {
+      n -= 1;
+      t.textContent = n;
+      if (n <= 0) { clearInterval(tick); t.classList.add("done"); }
+    }, 1000);
+  }
+  document.addEventListener("click", function (e) {
+    if (e.target && e.target.id === "reveal") {
+      reveal(!document.getElementById("arena").classList.contains("revealed"));
     }
   });
 

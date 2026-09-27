@@ -13,6 +13,8 @@ ROOT = os.path.dirname(HERE)
 ROLE = os.environ.get("PL_ROLE", "operator")
 CHIP = {"judge": "judge · PIN · via NetBird", "operator": "operator · P2P · NetBird"}[ROLE]
 LABELS = ["pre", "intro", "fixp", "fix"]
+_sha = os.path.join(ROOT, "GIT_SHA")
+VER = (open(_sha).read().split() or ["dev"])[0][:8] if os.path.exists(_sha) else "dev"   # static cache-bust
 HEROES = {"ds-8313", "ds-8533", "st-3921"}          # judge-runnable (PLAN 8: judge on heroes only)
 EVAL_HARNESS = "harness-frozen-v2"
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -37,7 +39,7 @@ def _j(v, default=None):
 
 
 def _ctx(request, **kw):
-    return {"request": request, "role": ROLE, "chip": CHIP, **kw}
+    return {"request": request, "role": ROLE, "chip": CHIP, "ver": VER, **kw}
 
 
 def _eval_runs(conn):
@@ -108,7 +110,9 @@ def _run_view(conn, run_id):
         return None
     run = dict(r)
     run["subject"], run["plan"] = _j(r["subject"], {}), _j(r["plan"], {})
-    labels = LABELS if run["subject"].get("which", "intro") == "intro" else ["fixp", "fix"]
+    which = run["subject"].get("which", "intro")
+    labels = LABELS if which == "intro" else ["base", "head"] if which == "repo" else ["fixp", "fix"]
+    head_l = "intro" if which == "intro" else labels[-1]
     mand = set(run["plan"].get("mandatory_ids") or [])
     checks = {c["id"]: c for c in run["plan"].get("checks") or []}
     grid = {}
@@ -123,10 +127,10 @@ def _run_view(conn, run_id):
             row["decision"] = c["decision"]
     headline = None
     for row in grid.values():
-        w = row["cells"].get("intro" if "intro" in labels else "fix", {}).get("witness") or {}
+        w = row["cells"].get(head_l, {}).get("witness") or {}
         if row["decision"] in ("detected", "detected_new") and "got" in w and "want" in w:
             headline = {"got": f"{w['got']:.6g}", "must": f"{w['want']:.6g}", "check_id": row["check_id"],
-                        "context": (row["cells"]["intro"]["detail"] or "").split(":")[0]}
+                        "context": (row["cells"][head_l]["detail"] or "").split(":")[0]}
             break
     rec = conn.execute("SELECT body FROM receipts WHERE run_id=?", (run_id,)).fetchone()
     receipt = _j(rec["body"]) if rec else None
@@ -158,9 +162,38 @@ def receipt_json(run_id: str):
     return JSONResponse(json.loads(rec["body"]))
 
 
+def _pdt(iso):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    try:
+        return datetime.fromisoformat(iso).astimezone(ZoneInfo("America/Los_Angeles")).strftime("%a %H:%M PDT")
+    except (TypeError, ValueError):
+        return None
+
+
 @app.get("/arena")
 def arena(request: Request):
-    return T.TemplateResponse(request, "arena.html", _ctx(request, prs=[], numbers=_numbers()))
+    """PLAN 6.6: the stored round from numbers.json; verdicts are the stored Sentinel runs, revealed by R."""
+    nums, conn = _numbers(), db.connect()
+    game = nums.get("game") or {}
+    diffs = {}
+    hr = os.path.join(ROOT, "eval", "hand_round.jsonl")
+    if os.path.exists(hr):
+        for line in open(hr):
+            r = json.loads(line)
+            diffs.setdefault(r["id"], r.get("diff"))
+    cards = []
+    for c in (game.get("round") or {}).get("cards") or []:
+        c = dict(c)
+        run = conn.execute("SELECT plan FROM runs WHERE id=?", (c.get("run_id"),)).fetchone()
+        rec = conn.execute("SELECT body FROM receipts WHERE run_id=?", (c.get("run_id"),)).fetchone()
+        checks = (_j(run["plan"], {}) if run else {}).get("checks") or []
+        c.update(families=sorted({x.get("family") for x in checks if x.get("family")}), n_checks=len(checks),
+                 receipt=hashlib.sha256(rec["body"].encode()).hexdigest() if rec else None,
+                 ran=_pdt(c.get("ran_at")), diff=diffs.get(c["id"]))
+        cards.append(c)
+    return T.TemplateResponse(request, "arena.html", _ctx(request, rnd=game.get("round") or {}, cards=cards,
+                                                          footer=game.get("footer") or {}))
 
 
 @app.get("/replay")
