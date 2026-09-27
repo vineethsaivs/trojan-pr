@@ -197,6 +197,89 @@ def run_pr(cid, which="intro", harness="harness", run_id=None, conn=None, cap_s=
             "receipt_path": path, "wall_ms": wall, "per": per, "decisions": decisions, "labels": labels}
 
 
+# ---- repo mode (minigpt game PRs): base vs head, the whole small repo ships in each job -----------
+SURFACE = None
+
+
+def surface():
+    global SURFACE
+    if SURFACE is None:
+        import yaml
+        SURFACE = yaml.safe_load(open(os.path.join(HERE, "..", "harness", "surface", "minigpt.yaml")))
+    return SURFACE
+
+
+def run_repo(pr_id, base_files, head_files, diff, title, description, kind, harness="harness", conn=None, cap_s=45):
+    """kind: hand | saboteur | honest | judge. base_files/head_files: {relpath: source} of target/minigpt."""
+    from plumbline import receipt
+    from plumbline.planner import make_plan, PLANNER_VERSION
+    t0 = time.time()
+    run_id = f"{pr_id}-{uuid.uuid4().hex[:6]}"
+    conn = conn or db.connect()
+    subject = {"repo": "target/minigpt", "pr": pr_id, "title": title, "kind": kind, "which": "repo",
+               "diff_sha256": hashlib.sha256(diff.encode()).hexdigest(), "harness": harness, "planner_version": PLANNER_VERSION}
+    db.upsert(conn, "runs", id=run_id, kind=kind, case_id=pr_id, subject=subject, status="planning",
+              created_at=datetime.now(timezone.utc).isoformat())
+    pre = prepass(diff, {p: s for p, s in head_files.items() if p.endswith(".py")},
+                  {p: s for p, s in base_files.items() if p.endswith(".py")}, surface())
+    plan = make_plan(diff, f"{title}\n\n{description}", pre, surface=surface(), cap_s=cap_s)
+    checks, ids = plan["checks"], {c["id"] for c in plan["checks"]}
+    targets = {c["id"]: c["call"]["target"] for c in checks}
+    db.update_run(conn, run_id, status="running", plan={k: v for k, v in plan.items() if k != "model_calls"})
+    res, per = {}, {}
+    def one(label, files):
+        job = {"job_id": f"{run_id}-{label}", "mode": "repo", "checks": checks, "files": files, "path": None,
+               "module": None, "root_pkg": None, "seed": 0, "per_check_timeout_s": 60}
+        return label, dispatch(job, harness=harness)
+    with ThreadPoolExecutor(2) as ex:
+        for f in as_completed([ex.submit(one, "base", base_files), ex.submit(one, "head", head_files)]):
+            label, r = f.result()
+            res[label], per[label] = r, judge.cells(r["lines"], ids)
+            for k, c in per[label].items():
+                db.upsert(conn, "cells", run_id=run_id, check_id=k, commit_label=label, sha=None, family=c.get("family"),
+                          target=targets.get(k.split(".")[0]), status=c["status"], metric=json.dumps(_clean(c.get("metric"))),
+                          threshold=json.dumps(_clean(c.get("threshold"))), detail=c.get("detail"),
+                          witness=_clean(c.get("witness") or {}), decision=None)
+    base, head = per["base"], per["head"]
+    decisions = {k: judge.decide(base.get(k) or base.get(k.split(".")[0]), h) for k, h in head.items()}
+    touched = [f"{f['file']}:{s}" for f in pre for s in f["symbols"]]
+    verdict, reason = judge.verdict(decisions, targets, touched)
+    for k, d in decisions.items():
+        conn.execute("UPDATE cells SET decision=? WHERE run_id=? AND check_id=? AND commit_label='head'", (d, run_id, k))
+    conn.commit()
+    results = [{"check_id": k, "commit": l, "family": c.get("family"), "status": c["status"], "metric": c.get("metric"),
+                "threshold": c.get("threshold"), "detail": c.get("detail"), "decision": decisions.get(k) if l == "head" else None}
+               for l in ("base", "head") for k, c in per[l].items()]
+    j0 = res["head"]
+    rec = _clean({"receipt_version": "plumbline/1", "run_id": run_id, "created_at": datetime.now(timezone.utc).isoformat(),
+                  "subject": subject, "verdict": verdict, "reason": reason,
+                  "statuses": {l: _status(per[l]) for l in ("base", "head")},
+                  "plan": {k: plan.get(k) for k in ("source", "planner_version", "model", "latency_ms", "plan_sha256", "summary",
+                                                     "declared_behavior_change", "checks", "mandatory_ids", "errors", "rejected")},
+                  "results": results,
+                  "execution": {"sandbox_host": os.environ["SANDBOXD_URL"], "runtime": j0.get("runtime"), "image_id": j0.get("image_id"),
+                                "harness": harness, "harness_sha256": j0.get("harness_sha256"), "docker_flags": DOCKER_FLAGS,
+                                "jobs": [{"job_id": r["job_id"], "exit": r["exit_code"], "wall_ms": r["wall_ms"]} for r in res.values()]},
+                  "model_calls": plan["model_calls"], "infra": _infra(), "code": {"git_sha": _git_sha()}})
+    rec = receipt.sign(rec, open(SIGNING_KEY, "rb").read())
+    os.makedirs(RECEIPTS, exist_ok=True)
+    path = os.path.join(RECEIPTS, f"{run_id}.json")
+    json.dump(rec, open(path, "w"), indent=1, sort_keys=True)
+    db.upsert(conn, "receipts", run_id=run_id, body=json.dumps(rec, sort_keys=True))
+    wall = int((time.time() - t0) * 1000)
+    db.update_run(conn, run_id, status="done", verdict=verdict, reason=reason, wall_ms=wall,
+                  finished_at=datetime.now(timezone.utc).isoformat())
+    return {"run_id": run_id, "verdict": verdict, "reason": reason, "plan": plan, "per": per, "decisions": decisions,
+            "receipt_path": path, "wall_ms": wall}
+
+
+def ci_run(job_id, files, harness="harness", timeout_s=300):
+    """pytest -q tests on the given repo files inside gVisor. -> (exit, tail)."""
+    r = dispatch({"job_id": job_id, "mode": "ci", "checks": [], "files": files, "seed": 0}, harness=harness, timeout_s=timeout_s)
+    ci = next((l for l in r["lines"] if l.get("ev") == "ci"), None)
+    return (ci["exit"], ci["tail"]) if ci else (r["exit_code"], r["stderr_tail"][-2000:])
+
+
 if __name__ == "__main__":
     # python -m plumbline.sentinel gold <case-id> <sha> [<sha> ...]
     cid, shas = sys.argv[2], sys.argv[3:]

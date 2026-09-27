@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Plumbline{% endblock %}</title>
+<link rel="icon" href="data:,">
+<link rel="preload" href="/static/fonts/plex-sans-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/static/fonts/plex-mono-500.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/app.css">
+<script>try{if(localStorage.getItem("pl-stage")==="1")document.documentElement.classList.add("stage")}catch(e){}</script>
+<script src="/static/htmx.min.js" defer></script>
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <a class="mark" href="/"><svg viewBox="0 0 16 24" width="16" height="24" aria-hidden="true"><path d="M8 1v14" stroke="currentColor" stroke-width="2"/><path d="M8 14l5 5-5 4-5-4z" fill="currentColor"/></svg>Plumbline</a>
+  <nav aria-label="Pages">
+    <a href="/"{% if request.url.path == "/" %} aria-current="page"{% endif %}>Cases</a>
+    <a href="/arena"{% if request.url.path == "/arena" %} aria-current="page"{% endif %}>Arena</a>
+  </nav>
+  <span class="chip" title="Who you are and how you got here">{{ chip }}</span>
+</header>
+<main>
+{% block main %}{% endblock %}
+</main>
+</body>
+</html>

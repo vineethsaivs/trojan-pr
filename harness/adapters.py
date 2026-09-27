@@ -72,7 +72,13 @@ def build(a, sv=None, scale=1.0, dt=None):
 
 def resolve(mod, job, target):
     path, qual = target.split(":", 1)
-    if path != job.get("path") and path[:-3].replace("/", ".") != job["module"]:
+    if job.get("mode") == "repo":            # the whole repo is on sys.path: import the target's file
+        import importlib
+        try:
+            mod = importlib.import_module(path[:-3].replace("/", "."))
+        except ModuleNotFoundError as e:
+            raise MissingTarget(f"{path} not importable at this commit: {e}")
+    elif path != job.get("path") and path[:-3].replace("/", ".") != job["module"]:
         raise O.HarnessError(f"target file {path} is not the job's file {job.get('path') or job['module']}")
     obj = mod
     for part in qual.split("."):
@@ -296,13 +302,115 @@ def run_grad_norm(chk, mod, job):
             v = O.reference(lambda ts, n: norm_of(ts, n),
                             lambda ts, n: clip_grad_norm(ts, norm_type=n, max_norm=kwargs.get("max_norm", 1.0)),
                             mk, [{}])
-            v.detail = f"p={nt:g}, grads [3,-4],[2]: got {v.witness.get('got', float('nan')):.6g}, must be {v.witness.get('want', float('nan')):.6g}; " + v.detail
+            try:   # the numbers for the detail, computed directly (the oracle's witness is empty on an exact match)
+                got, want = float(norm_of(pieces, nt)), float(clip_grad_norm(pieces, norm_type=nt, max_norm=kwargs.get("max_norm", 1.0)))
+                v.witness.update(got=got, want=want)
+            except Exception:
+                got = want = float("nan")
+            v.detail = f"p={nt:g}, grads [3,-4],[2]: got {got:.6g}, must be {want:.6g}; " + v.detail
             out.append(v)
         return out
     raise O.HarnessError(f"family {fam} is not supported by grad_norm")
 
 
-ADAPTERS = {"call": run_call, "grad_norm": run_grad_norm}
+# ---- minigpt adapters (repo mode): the model is rebuilt from cfg.seed on every call -----------
+def _repo():
+    import importlib
+    return importlib.import_module("config"), importlib.import_module("model"), importlib.import_module("data")
+
+
+def _batch(data, cfg, n, seed=1):
+    import random
+    try:
+        return data.get_batch(n, random.Random(seed))
+    except (TypeError, AttributeError):
+        return data.get_batch(n, torch.Generator().manual_seed(seed))
+
+
+def _fresh(config, model):
+    cfg = config.Config()
+    torch.manual_seed(cfg.seed)
+    m = model.GPT(cfg)
+    m.eval()                                  # no dropout: the invariants are about the math
+    return cfg, m
+
+
+class _CaptureOpt:
+    """Stands in for the optimizer inside train_step: step() records the gradients, zero_grad() keeps them."""
+    def __init__(self, m):
+        self.m, self.grads = m, None
+    def step(self):
+        self.grads = {n: p.grad.detach().clone() for n, p in self.m.named_parameters() if p.grad is not None}
+    def zero_grad(self, set_to_none=True):
+        pass
+
+
+def run_train_step(chk, mod, job):
+    fam, p = chk["family"], chk["params"]
+    if fam != "ga_invariance":
+        raise O.HarnessError(f"family {fam} is not supported by train_step")
+    step_fn = resolve(mod, job, chk["call"]["target"])
+    config, model, data = _repo()
+
+    def step(batches):
+        cfg, m = _fresh(config, model)
+        cfg.grad_clip = 1e9                   # clipping would rescale both runs alike and hide a gradient scale
+        opt, seen = _CaptureOpt(m), []
+        real = torch.autograd.backward
+        def spy(tensors, *a, **k):            # the objective actually backpropagated, summed over micro-steps
+            t = tensors[0] if isinstance(tensors, (list, tuple)) else tensors
+            seen.append(float(t.detach()))
+            return real(tensors, *a, **k)
+        torch.autograd.backward = spy
+        try:
+            step_fn(m, opt, [tuple(b) for b in batches], cfg)
+        except O.DECLARED:
+            raise
+        except O.BINDING as e:
+            raise TargetRaised(f"{type(e).__name__}: {e}") from e
+        finally:
+            torch.autograd.backward = real
+        if opt.grads is None:
+            raise TargetRaised("train_step never called opt.step()")
+        return sum(seen), opt.grads
+
+    cfg0 = config.Config()
+    return [O.ga_invariance(step, lambda n: _batch(data, cfg0, n), p["micro"], p["accum"],
+                            tokens_per_row=getattr(cfg0, "block_size", 1))]
+
+
+def run_optimizer_groups(chk, mod, job):
+    if chk["family"] != "config_audit":
+        raise O.HarnessError(f"family {chk['family']} is not supported by optimizer_groups")
+    fn = resolve(mod, job, chk["call"]["target"])
+    config, model, _ = _repo()
+    cfg, m = _fresh(config, model)
+    opt = fn(m, cfg)
+    return [O.config_audit(opt.param_groups, list(m.named_parameters()),
+                           {"lr": cfg.lr, "weight_decay": cfg.weight_decay}, chk["params"]["rules"])]
+
+
+def run_loss_module(chk, mod, job):
+    fam, p = chk["family"], chk["params"]
+    resolve(mod, job, chk["call"]["target"])        # the target must exist at this commit
+    config, model, data = _repo()
+    cfg, m = _fresh(config, model)
+    X, Y = _batch(data, cfg, 16)
+    loss = lambda X, Y: m(X, Y)[1]
+    if fam == "reference":
+        n = int((Y != -1).sum())
+        ref = lambda X, Y: torch.nn.functional.cross_entropy(m(X)[0].double().reshape(-1, m(X)[0].shape[-1]),
+                                                             Y.reshape(-1), ignore_index=-1)
+        return [O.reference(loss, ref, lambda: (X, Y), [{}], n_accum=max(n, 1),
+                            why=f"8 * eps(fp32) * sqrt({n} target tokens), float64 cross_entropy(ignore_index=-1) on the same logits")]
+    if fam == "edge_sweep":
+        edges = {"batch_1": (X[:1], Y[:1])}
+        return [O.edge_sweep(loss, {e: edges[e] for e in p["edges"] if e in edges} or edges)]
+    raise O.HarnessError(f"family {fam} is not supported by loss_module")
+
+
+ADAPTERS = {"call": run_call, "grad_norm": run_grad_norm, "train_step": run_train_step,
+            "optimizer_groups": run_optimizer_groups, "loss_module": run_loss_module}
 
 
 def run_plan_check(chk, mod, job):

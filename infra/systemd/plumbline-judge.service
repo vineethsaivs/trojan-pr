@@ -1,0 +1,17 @@
+[Unit]
+Description=plumbline web (judge view, NetBird IP only, port 8080)
+After=netbird.service
+Wants=netbird.service
+
+[Service]
+# ponytail: runs as root because the overnight queue (tmux, root) owns the SQLite WAL files;
+# move both to the plumbline user after the event if this outlives the hackathon.
+EnvironmentFile=/etc/plumbline/env
+Environment=PL_ROLE=judge PYTHONPATH=/opt/plumbline
+WorkingDirectory=/opt/plumbline
+ExecStart=/bin/sh -c 'exec /opt/plumbline/.venv/bin/uvicorn plumbline.app:app --host $$(netbird status --ipv4) --port 8080'
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

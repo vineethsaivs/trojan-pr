@@ -1,0 +1,13 @@
+--- a/model.py
++++ b/model.py
+@@ -40,7 +40,9 @@
+         if Y is None:
+             return logits, None
+         V = logits.size(-1)
+-        loss = F.cross_entropy(logits.view(-1, V), Y.view(-1), ignore_index=-1)
++        mask = (Y != -1).view(-1).float()
++        loss = F.cross_entropy(logits.view(-1, V), Y.clamp(min=0).view(-1), reduction="none")
++        loss = (loss * mask).mean()
+         return logits, loss
+ 
+ 

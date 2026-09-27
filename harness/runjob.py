@@ -30,7 +30,35 @@ def _alarm(signum, frame):
     raise _Timeout()
 
 
+def write_repo(job):
+    """repo and ci modes: the PR's files are written to the tmpfs and imported normally."""
+    root = "/work/repo" if os.path.isdir("/work") else os.path.join(os.environ.get("TMPDIR", "/tmp"), f"repo-{job['job_id']}")
+    for rel, src in job["files"].items():
+        p = os.path.join(root, rel)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        open(p, "w").write(src)
+    sys.path.insert(0, root)
+    os.chdir(root)
+    return root
+
+
+def run_ci(job):
+    import subprocess
+    root = write_repo(job)
+    try:
+        r = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests"], cwd=root,
+                           capture_output=True, text=True, timeout=int(job.get("ci_timeout_s", 240)))
+        code, out = r.returncode, (r.stdout + r.stderr)
+    except subprocess.TimeoutExpired as e:
+        code, out = "timeout", str(e.stdout or "")
+    emit(ev="ci", exit=code, tail="\n".join(out.splitlines()[-60:]))
+    emit(ev="done", n=0, degraded=[])
+
+
 def load_module(job):
+    if job.get("mode") == "repo":
+        write_repo(job)
+        return None, None
     L = Loader(job["files"], job["root_pkg"], SHIMS.get(job["root_pkg"], {}))
     try:
         return L.load(job["module"]), L
@@ -51,9 +79,11 @@ def main(path):
     torch.manual_seed(job.get("seed", 0))
     signal.signal(signal.SIGALRM, _alarm)
     n, degraded = 0, []
+    if job.get("mode") == "ci":
+        return run_ci(job)
     try:
         mod, L = load_module(job)
-        degraded = L.degraded[:5]
+        degraded = L.degraded[:5] if L else []
     except Exception as e:
         for chk in job["checks"]:
             emit(ev="check", id=chk["id"], family="harness", status="ERROR", metric=None, threshold=None,

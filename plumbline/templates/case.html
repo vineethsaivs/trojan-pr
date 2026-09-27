@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}{{ c.id }} · Plumbline{% endblock %}
+{% set SPLIT = {"dev": "in-sample", "held-out": "held-out", "index": "index only", "dropped": "dropped"} %}
+
+{% macro pr(url) -%}
+  {%- if url -%}{%- set u = url.split(" ")[0].rstrip("/") -%}<a href="{{ u }}">PR #{{ u.split("/")[-1] }}</a>
+  {%- else -%}<span class="unknown">no PR</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro fact(v, why="not recorded") -%}
+  {%- if v -%}{{ v }}{%- else -%}<span class="unknown">unknown: {{ why }}</span>{%- endif -%}
+{%- endmacro %}
+
+{% block main %}
+{% set i = c.get("intro") or {} %}
+{% set f = c.get("fix") or {} %}
+{% set hl = c.get("headline") %}
+{% set rp = c.get("replay") %}
+
+<header class="page-head">
+  <div>
+    <h1><span class="mono">{{ c.get("function") or c.id }}</span>{% if c.get("repo") %} in {{ c.repo }}{% endif %}</h1>
+    <p class="meta"><span class="mono">{{ c.id }}</span>, {{ SPLIT.get(c.get("split"), c.get("split") or "unknown") }}{% if c.get("file") %}, <span class="mono">{{ c.file }}</span>{% endif %}</p>
+  </div>
+  {% if can_run %}
+  <form method="post" action="/cases/{{ c.id }}/run" class="run-form">
+    <button type="submit">Run Sentinel on {% if i.get("pr") %}PR #{{ i.pr.split(" ")[0].rstrip("/").split("/")[-1] }}{% else %}this change{% endif %}</button>
+  </form>
+  {% endif %}
+</header>
+
+<p class="bug">{{ fact(c.get("bug_plain"), "no plain-words summary for this case") }}</p>
+
+{% if hl %}
+<section class="two" aria-label="What it returned and what it must return">
+  {% if hl.get("context") %}<p class="ctx">{{ hl.context }}</p>{% endif %}
+  <p class="pair"><span class="got num">{{ hl.got }}</span> <span class="must"><span class="lbl">must be</span> <span class="num">{{ hl.must }}</span></span></p>
+  {% if c.get("two_numbers") %}<p class="full">{{ c.two_numbers }}</p>{% endif %}
+</section>
+{% elif c.get("two_numbers") %}
+<section class="two" aria-label="The measured numbers">
+  <p class="two-text">{{ c.two_numbers }}</p>
+</section>
+{% else %}
+<p class="two unknown">unknown: no measured pair recorded for this case</p>
+{% endif %}
+
+<section class="timeline" aria-label="Timeline">
+  <div class="tl-stop">
+    <span class="tl-what">Bug merged</span>
+    <span>{{ pr(i.get("pr")) }}{% if i.get("author") %} by {{ i.author }}{% endif %}</span>
+    {% if i.get("title") %}<span class="aside">{{ i.title }}</span>{% endif %}
+    {% if not i.get("pr") and i.get("note") %}<span class="aside">{{ i.note }}</span>{% endif %}
+    <span class="num">{{ (i.get("merged_at") or "")[:10] or "date unknown" }}</span>
+  </div>
+  <div class="tl-span">
+    {% if c.get("days_alive") is not none %}<span class="tl-days"><span class="num">{{ c.days_alive }}</span> days alive</span>{% else %}<span class="unknown">days alive unknown</span>{% endif %}
+    {% if c.get("releases") %}<span class="aside">{{ c.releases }}</span>{% endif %}
+  </div>
+  <div class="tl-stop">
+    <span class="tl-what">My fix merged</span>
+    <span>{{ pr(f.get("pr")) }}{% if f.get("approved_by") %}, approved by {{ f.approved_by }}{% endif %}</span>
+    <span class="num">{{ (f.get("merged_at") or "")[:10] or "date unknown" }}</span>
+  </div>
+</section>
+
+<section>
+  <h2>Who checked it</h2>
+  <dl class="facts">
+    <div><dt>Human review and AI bots</dt><dd>{{ fact(c.get("review_on_intro")) }}</dd></div>
+    <div><dt>CI at merge</dt><dd>{{ fact(c.get("ci_at_merge")) }}</dd></div>
+    <div><dt>Tests</dt><dd>{{ fact(c.get("tests_note")) }}</dd></div>
+    <div><dt>Linters</dt><dd>{{ fact(c.get("static"), "linters not run on this case") }}</dd></div>
+    <div><dt>Reviewer re-run</dt><dd><span class="unknown">unknown: reviewer results are not on this page yet</span></dd></div>
+  </dl>
+</section>
+
+<section>
+  <h2>Sentinel runs</h2>
+  {% if runs %}
+  <div class="scroll" tabindex="0" role="region" aria-label="Sentinel runs">
+  <table class="runs">
+    <thead><tr><th scope="col">Run</th><th scope="col">Verdict</th><th scope="col">Started (UTC)</th><th scope="col" class="r">Wall</th><th scope="col">Harness</th></tr></thead>
+    <tbody>
+    {% for r in runs %}{% set s = r.get("subject") or {} %}
+      <tr>
+        <td><a class="mono" href="/runs/{{ r.id }}">{{ r.id }}</a></td>
+        <td>{% if r.get("verdict") %}<span class="st st-{{ r.verdict|lower|replace(' ', '-') }}">{{ r.verdict }}</span>{% else %}<span class="unknown">{{ r.get("status") or "unknown" }}</span>{% endif %}</td>
+        <td class="num">{{ (r.get("created_at") or "")[:19]|replace("T", " ") }}</td>
+        <td class="num r">{% if r.get("wall_ms") is not none %}{{ "%.1f"|format(r.wall_ms / 1000) }} s{% else %}<span class="unknown">n/a</span>{% endif %}</td>
+        <td class="mono">{{ s.get("harness") or "unknown" }}{% if s.get("planner_version") %}, planner {{ s.planner_version }}{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="unknown">No Sentinel runs for this case yet.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Details</h2>
+  <dl class="facts">
+    {% if c.get("oracle") %}<div><dt>Oracle</dt><dd>{{ c.oracle }}</dd></div>{% endif %}
+    {% if c.get("minimal_input") %}<div><dt>Minimal input</dt><dd class="mono">{{ c.minimal_input }}</dd></div>{% endif %}
+    <div><dt>hindsight oracle (written after the fix)</dt><dd>
+      {% if rp %}
+      <span class="chips">{% for l in ["pre", "intro", "fixp", "fix"] %}{% set h = (rp.get(l) or "")|string %}{% set w = (h.split(" ")[0] if h else "none")|upper %}<span class="chip-cell"><span class="lbl">{{ l }}</span> <span class="st st-{{ w|lower|replace('/', '') }}"{% if h != w %} title="{{ h }}"{% endif %}>{{ w if w in ["PASS", "FAIL", "ERROR"] else w|lower }}</span></span>{% endfor %}</span>
+      {% if rp.get("seconds") is not none %}<span class="aside">replay took <span class="num">{{ rp.seconds }}</span> s{% if rp.get("script") %}, <span class="mono">{{ rp.script }}</span>{% endif %}</span>{% endif %}
+      {% if rp.get("extra") %}<span class="aside">{{ rp.extra }}</span>{% endif %}
+      {% else %}<span class="unknown">unknown: no replay for this case</span>{% endif %}
+    </dd></div>
+    {% if c.get("sibling") %}<div><dt>Sibling bug</dt><dd>{{ c.sibling }}</dd></div>{% endif %}
+    {% if c.get("downstream") %}<div><dt>Downstream</dt><dd>{{ c.downstream }}</dd></div>{% endif %}
+    {% if i.get("sha") or f.get("sha") %}<div><dt>Commits</dt><dd class="mono">{% if c.get("pre") %}pre {{ c.pre }}, {% endif %}intro {{ (i.get("sha") or "unknown")[:10] }}{% if c.get("fixp") %}, fixp {{ c.fixp[:10] }}{% endif %}, fix {{ (f.get("sha") or "unknown")[:10] }}</dd></div>{% endif %}
+  </dl>
+  {% if c.get("caveats") %}
+  <h3>Caveats</h3>
+  <ul class="caveats">{% for cv in c.caveats %}<li>{{ cv }}</li>{% endfor %}</ul>
+  {% endif %}
+</section>
+{% endblock %}

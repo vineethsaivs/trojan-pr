@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Arena · Plumbline{% endblock %}
+{% block main %}
+<h1>Trojan game</h1>
+{% if prs %}
+<p class="lead">Three PRs. One hides a bug. Which one?</p>
+<ol class="arena">
+  {% for pr in prs %}
+  <li class="arena-card">
+    <h2>{{ pr.get("title") or "Untitled PR" }}</h2>
+    <p><span class="st st-{{ 'pass' if pr.get('ci') == 'green' else 'error' }}">CI {{ pr.get("ci") or "unknown" }}</span></p>
+    <p><strong>Reviewer:</strong> {{ pr.get("reviewer_verdict") or "unknown" }}{% if pr.get("reviewer_reason") %}, {{ pr.reviewer_reason }}{% endif %}</p>
+  </li>
+  {% endfor %}
+</ol>
+{% else %}
+<p class="lead">The Trojan game opens after the overnight agent run.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,15 @@
+--- a/train.py
++++ b/train.py
+@@ -11,10 +11,8 @@
+     Returns the global norm before clipping, as a float.
+     """
+     grads = [p.grad for p in params if p.grad is not None]
+-    total = 0.0
+-    for g in grads:
+-        total += g.abs().pow(norm_type).sum().item()
+-    total = total ** (1.0 / norm_type)
++    sums = [g.abs().pow(norm_type).sum() for g in grads]
++    total = torch.stack(sums).sum().item() ** (1.0 / norm_type) if sums else 0.0
+     if total > max_norm:
+         for g in grads:
+             g.mul_(max_norm / (total + 1e-6))

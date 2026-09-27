@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Cases · Plumbline{% endblock %}
+{% set LABELS = ["pre", "intro", "fixp", "fix"] %}
+{% set SPLIT = {"dev": "in-sample", "held-out": "held-out", "index": "index only", "dropped": "dropped"} %}
+{% set ev = rows|selectattr("split", "in", ["dev", "held-out"])|list %}
+{% set rest = rows|rejectattr("split", "in", ["dev", "held-out"])|list %}
+{% set n = totals.n %}
+{% set ns = namespace(ship=0, rev=0, h=0, hb=0) %}
+{% for r in ev %}
+  {% set rp = r.get("replay") or {} %}
+  {% if r.get("days_alive") is not none %}{% set ns.ship = ns.ship + 1 %}{% endif %}
+  {% if r.get("reviewer") %}{% set ns.rev = ns.rev + 1 %}{% endif %}
+  {% if ((rp.get("intro") or "")|string)[:4]|upper == "FAIL" %}{% set ns.h = ns.h + 1 %}{% endif %}
+  {% if ((rp.get("fix") or "")|string)[:4]|upper == "FAIL" %}{% set ns.hb = ns.hb + 1 %}{% endif %}
+{% endfor %}
+
+{% macro verdict(v, href) -%}
+  {%- if v -%}<a class="st st-{{ v|lower|replace(' ', '-') }}" href="{{ href }}">{{ v }}</a>
+  {%- else -%}<a class="st st-none" href="{{ href }}">no verdict</a>{%- endif -%}
+{%- endmacro %}
+
+{% macro row(r) %}
+  {% set s = r.get("sentinel") %}
+  {% set sf = r.get("sentinel_fix") %}
+  {% set rp = r.get("replay") %}
+  {% set fx = r.get("fix") or {} %}
+  <tr{% if r.get("split") == "dropped" %} class="dropped"{% endif %}>
+    <th scope="row" class="case">
+      <a class="mono" href="/cases/{{ r.id }}">{{ r.id }}</a>
+      {% if r.get("function") %}<span class="fn mono">{{ r.function }}</span>{% endif %}
+      <span class="tag">{{ SPLIT.get(r.get("split"), r.get("split") or "unknown") }}</span>
+    </th>
+    <td>{% if r.get("days_alive") is not none %}shipped, lived <span class="num">{{ r.days_alive }}</span> days{% else %}<span class="unknown">unknown: no merge record</span>{% endif %}</td>
+    <td>{% if r.get("reviewer") is none %}<span class="unknown">pending adjudication</span>{% elif r.reviewer.get("label") %}{{ r.reviewer.label }}{% else %}<code class="json">{{ r.reviewer|tojson }}</code>{% endif %}</td>
+    {% if s %}
+      {% for l in LABELS %}{% set st = (s.get("statuses") or {}).get(l) %}
+      <td class="c">{% if st %}<span class="st st-{{ st|lower }}">{{ st }}</span>{% else %}<span class="st st-na">n/a</span>{% endif %}</td>
+      {% endfor %}
+      <td class="c">{{ verdict(s.get("verdict"), "/runs/" ~ s.run_id) }}</td>
+    {% else %}
+      <td colspan="5" class="c"><span class="unknown">not run yet</span></td>
+    {% endif %}
+    <td class="c">{% if sf %}{{ verdict(sf.get("verdict"), "/runs/" ~ sf.run_id) }}{% else %}<span class="unknown">not run</span>{% endif %}</td>
+    {% if rp %}
+      {% for l in LABELS %}{% set h = (rp.get(l) or "")|string %}{% set w = (h.split(" ")[0] if h else "none")|upper %}
+      <td class="c"><span class="st st-{{ w|lower|replace('/', '') }}"{% if h and h != w %} title="{{ h }}"{% endif %}>{{ w if w in ["PASS", "FAIL", "ERROR"] else w|lower }}</span></td>
+      {% endfor %}
+    {% else %}
+      <td colspan="4" class="c"><span class="unknown">no replay</span></td>
+    {% endif %}
+    <td>{% if fx.get("pr") %}{% set pr = fx.pr.split(" ")[0].rstrip("/") %}<a href="{{ pr }}" class="mono">#{{ pr.split("/")[-1] }}</a>{% else %}<span class="unknown">no PR</span>{% endif %}</td>
+  </tr>
+{% endmacro %}
+
+{% block main %}
+<h1>Cases</h1>
+<p class="lead">{{ rows|length }} silent math bugs that merged, shipped, and were later fixed. The first {{ n }} are the eval set. Dev rows are in-sample.</p>
+
+<div class="scroll" tabindex="0" role="region" aria-label="Case table">
+<table class="cases">
+  <thead>
+    <tr>
+      <th scope="col" rowspan="2" class="case">Case</th>
+      <th scope="col" rowspan="2">Historical record</th>
+      <th scope="col" rowspan="2">Reviewer, best cell mean [min, max]</th>
+      <th scope="colgroup" colspan="6" class="grp">Sentinel</th>
+      <th scope="colgroup" colspan="4" class="grp">hindsight oracle (written after the fix)</th>
+      <th scope="col" rowspan="2">My fix</th>
+    </tr>
+    <tr class="sub">
+      {% for l in LABELS %}<th scope="col" class="c">{{ l }}</th>{% endfor %}
+      <th scope="col" class="c">verdict</th>
+      <th scope="col" class="c" title="Sentinel run on my fix PR: it should pass">on my fix</th>
+      {% for l in LABELS %}<th scope="col" class="c">{{ l }}</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="group"><th colspan="14" scope="rowgroup">Eval set, {{ ev|length }} cases</th></tr>
+    {% for r in ev %}{{ row(r) }}{% endfor %}
+  </tbody>
+  <tbody class="totals">
+    <tr>
+      <th scope="row" class="case">Bugs caught</th>
+      <td>caught <span class="num">{{ n - ns.ship }}</span> of <span class="num">{{ n }}</span></td>
+      <td>{% if ns.rev %}adjudicated <span class="num">{{ ns.rev }}</span> of <span class="num">{{ n }}</span>{% else %}<span class="unknown">pending adjudication</span>{% endif %}</td>
+      <td colspan="6" class="c">{% if totals.ran %}caught <span class="num">{{ totals.blocked }}</span> of <span class="num">{{ n }}</span> <span class="aside">({{ totals.ran }} run)</span>{% else %}<span class="unknown">not run yet</span>{% endif %}</td>
+      <td colspan="4" class="c">caught <span class="num">{{ ns.h }}</span> of <span class="num">{{ n }}</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <th scope="row" class="case">Fixes flagged</th>
+      <td><span class="unknown">n/a</span></td>
+      <td>{% if ns.rev %}see rows{% else %}<span class="unknown">pending adjudication</span>{% endif %}</td>
+      <td colspan="6" class="c">{% if totals.fix_ran %}flagged <span class="num">{{ totals.fix_blocked }}</span> of <span class="num">{{ n }}</span> fixes <span class="aside">({{ totals.fix_ran }} run)</span>{% else %}<span class="unknown">not run yet</span>{% endif %}</td>
+      <td colspan="4" class="c">flagged <span class="num">{{ ns.hb }}</span> of <span class="num">{{ n }}</span> fixes</td>
+      <td></td>
+    </tr>
+  </tbody>
+  {% if rest %}
+  <tbody>
+    <tr class="group"><th colspan="14" scope="rowgroup">Not scored, {{ rest|length }} cases</th></tr>
+    {% for r in rest %}{{ row(r) }}{% endfor %}
+  </tbody>
+  {% endif %}
+</table>
+</div>
+{% endblock %}

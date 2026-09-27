@@ -1,0 +1,16 @@
+--- a/train.py
++++ b/train.py
+@@ -23,9 +23,11 @@
+ 
+ def train_step(model, opt, batches, cfg):
+     """One optimizer step over a list of (X, Y) micro-batches (grad accumulation)."""
++    losses = []
+     for X, Y in batches:
+-        loss = model(X, Y)[1] / len(batches)
+-        loss.backward()
++        losses.append(model(X, Y)[1] / len(batches))
++    loss = torch.stack(losses).mean()
++    loss.backward()
+     clip_grads(model.parameters(), cfg.grad_clip, cfg.clip_norm_type)
+     opt.step()
+     opt.zero_grad()

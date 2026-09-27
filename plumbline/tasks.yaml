@@ -1,0 +1,5 @@
+# PLAN 6.3: the four PR tasks agents work on (target/minigpt)
+T1: "clip_grads calls .item() per parameter, which forces a host sync each time. Compute the global norm without per-parameter .item() calls. Behaviour must stay identical for every norm_type."
+T2: "Training logs only the last micro-batch's loss. Log the mean over all gradient-accumulation micro-steps."
+T3: "Add a config flag decay_embeddings (default True) controlling whether the token embedding gets weight decay."
+T4: "Speed up the loss by computing cross-entropy only on answer positions."

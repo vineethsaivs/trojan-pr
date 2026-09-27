@@ -15,7 +15,8 @@ MODELS = ("deepseek-v4-flash-0731", "deepseek-v4-flash-0731")   # second = fresh
 PLANNER_VERSION = "v1.2"   # v1.1: normalize typed args (amendment 3); v1.2: drop type-name outputs (amendment 4)
 FAMS_BY_ADAPTER = {"call": {"bounds", "monotonic", "finite_extremes", "dtype_shadow", "no_mutation",
                             "edge_sweep", "reference", "decomposition"},
-                   "grad_norm": {"decomposition", "reference"}}
+                   "grad_norm": {"decomposition", "reference"}, "train_step": {"ga_invariance"},
+                   "optimizer_groups": {"config_audit"}, "loss_module": {"reference", "edge_sweep"}}
 ADAPTER_CATALOG = """call: target "path.py:Qualname" (module-level function or class). Optional: construct {kwarg: Arg} to instantiate the class; method "name" to call; set_attr "name" set to the sweep value before each call; args [Arg]; kwargs {name: Arg}; output int or key.
   bounds/monotonic params: {sweep: {start, stop, step?} or {start, stop, values: [..]}, lo/hi: number or {"config": key from a construct/kwargs dict}, direction: nonincreasing|nondecreasing}
   finite_extremes: {scales: [2-6 numbers], expect: finite|finite_nonzero|scale_invariant, backward?, compute_dtype?: float16|bfloat16 if the code computes internally in that dtype}; tensor args with "scaled": true are multiplied by each scale
@@ -27,6 +28,13 @@ ADAPTER_CATALOG = """call: target "path.py:Qualname" (module-level function or c
 grad_norm: for clip_grad_norm_-shaped functions (list of params with .grad -> total norm). call: {target, kwargs: {max_norm: Arg}}.
   decomposition: {pieces, combine: "same", p: [numbers]}; reference: {ref: "torch.clip_grad_norm_", cases: [{"norm_type": {"float": p}}]}
 Arg: {"tensor": {"shape": [..], "dist": randn|rand|zeros|ones|arange|const, "value", "dtype": float32|float16|bfloat16|float64|int64|bool, "seed", "scaled", "requires_grad"}} | {"list": {"n", "dist": randn|arange|const|empty_strings, "value"}} | {"float": x} | {"int": n} | {"str": s} | {"bool": b} | {"none": true} | {"sweep": true} | {"dict": {k: Arg}} | {"items": [Arg]} | {"object": {k: Arg}}"""
+
+REPO_CATALOG = """
+Repo adapters (this repository only; targets from the SURFACE map):
+train_step: target "train.py:train_step". ga_invariance params {micro: 1-8, accum: 2-8}.
+optimizer_groups: target "model.py:configure_optimizers". config_audit params {rules: [each_param_once, lr_matches_config, decay_rule_ndim]}.
+loss_module: target "model.py:GPT.forward". reference params {ref: "cross_entropy_ignore_index", cases: [{}]}; edge_sweep params {edges: ["batch_1"]}.
+grad_norm also applies to "train.py:clip_grads"."""
 
 TOOL = {"type": "function", "function": {
     "name": "submit_plan", "description": "Submit the check plan. Exactly once.",
@@ -42,8 +50,41 @@ TOOL = {"type": "function", "function": {
             "pattern": {"type": "string"}, "why": {"type": "string"}}}}}}}}
 
 
-def mandatory_checks(pre):
-    """Adapter defaults exist only for clip_grad_norm_-shaped functions (5.3)."""
+DEFAULTS = {  # adapter defaults for surface-map mandatory checks (PLAN 6.2)
+    ("grad_norm", "decomposition"): ({"kwargs": {"max_norm": {"float": 1000000.0}}}, {"pieces": 2, "combine": "same", "p": [2, 1, 3]}),
+    ("grad_norm", "reference"): ({"kwargs": {"max_norm": {"float": 1.0}}},
+                                 {"ref": "torch.clip_grad_norm_", "cases": [{"norm_type": {"float": p}} for p in (2.0, 1.0, 3.0)]}),
+    ("train_step", "ga_invariance"): ({}, {"micro": 2, "accum": 4}),
+    ("optimizer_groups", "config_audit"): ({}, {"rules": ["each_param_once", "lr_matches_config", "decay_rule_ndim"]}),
+    ("loss_module", "reference"): ({}, {"ref": "cross_entropy_ignore_index", "cases": [{}]}),
+    ("loss_module", "edge_sweep"): ({}, {"edges": ["batch_1"]}),
+}
+
+
+def surface_mandatory(pre, surface):
+    """Repo mode: every touched symbol in the surface map gets its mandatory checks, plus the "*" set
+    on their canonical targets, so the invariants that matter always run."""
+    want = []
+    for f in pre:
+        for sym in f["symbols"]:
+            e = surface.get(f"{f['file']}:{sym}")
+            if e:
+                want += [(f"{f['file']}:{sym}", e["adapter"], fam) for fam in e.get("mandatory", [])]
+    canon = {v["adapter"]: k for k, v in surface.items() if k != "*" and "adapter" in v}
+    fam_adapter = {"ga_invariance": "train_step", "config_audit": "optimizer_groups"}
+    want += [(canon[fam_adapter[fam]], fam_adapter[fam], fam) for fam in surface.get("*", {}).get("mandatory", [])]
+    out = []
+    for t, ad, fam in dict.fromkeys(want):
+        call, params = DEFAULTS[(ad, fam)]
+        out.append({"id": f"m{len(out) + 1}", "family": fam, "adapter": ad, "call": {"target": t, **call},
+                    "params": params, "pattern": "none", "why": f"mandatory ({t.split(':')[1]} in the surface map)"})
+    return out
+
+
+def mandatory_checks(pre, surface=None):
+    """Adapter defaults exist only for clip_grad_norm_-shaped functions (5.3), or from a surface map."""
+    if surface:
+        return surface_mandatory(pre, surface)
     out = []
     for f in pre:
         for s in f["symbols"]:
@@ -191,11 +232,12 @@ def _errors(plan, touched_files, surface):
 
 
 def make_plan(diff, description, pre, surface=None, config=None, cap_s=45, models=MODELS):
-    mandatory = mandatory_checks(pre)
+    mandatory = mandatory_checks(pre, surface)
     touched = {f["file"] for f in pre}
     user = (PROMPT.replace("{diff}", diff).replace("{description}", description or "")
             .replace("{prepass_json}", json.dumps(pre)).replace("{mandatory_json}", json.dumps(mandatory))
-            .replace("{adapter_catalog}", ADAPTER_CATALOG).replace("{surface_map}", json.dumps(surface or {}))
+            .replace("{adapter_catalog}", ADAPTER_CATALOG + (REPO_CATALOG if surface else ""))
+            .replace("{surface_map}", json.dumps(surface or {}))
             .replace("{config_json}", json.dumps(config or {})))
     t0, calls, errs, model, plan, source = time.time(), [], [], None, None, "prepass_default"
     rejected = []

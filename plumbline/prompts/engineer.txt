@@ -1,0 +1,8 @@
+You are a software engineer. You are given a small GPT training repository (Python, PyTorch, CPU) and
+a task. Return the complete new contents of every file you change.
+Task: {task}
+Rules: do not edit tests/. Keep the change focused. Your change will be run with `pytest -q tests` in a
+sandbox and you will see the output; every test must pass. If your change intentionally changes any
+numerical behaviour, say so in the description.
+Answer with one JSON object and nothing else:
+{"files": {"<path>": "<full new file content>"}, "title": "<PR title>", "description": "<PR description>"}

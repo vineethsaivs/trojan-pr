@@ -1,0 +1,27 @@
+--- a/config.py
++++ b/config.py
+@@ -13,4 +13,5 @@
+     weight_decay: float = 0.1
+     grad_clip: float = 1.0
+     clip_norm_type: float = 2.0
++    decay_embeddings: bool = True
+     seed: int = 0
+--- a/model.py
++++ b/model.py
+@@ -45,10 +45,13 @@
+ 
+ 
+ def configure_optimizers(model, cfg):
+-    """AdamW: weight decay on matrices and embeddings (dim >= 2), none on biases and norms."""
++    """AdamW: weight decay on dim >= 2 params, none on biases and norms.
++
++    cfg.decay_embeddings controls the token embedding (wte).
++    """
+     decay, no_decay = [], []
+-    for p in model.parameters():
+-        if p.dim() < 2:
++    for n, p in model.named_parameters():
++        if p.dim() < 2 or (n == "wte.weight" and not cfg.decay_embeddings):
+             no_decay.append(p)
+         else:
+             decay.append(p)

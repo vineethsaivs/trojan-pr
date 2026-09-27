@@ -1,0 +1,6 @@
+# PLAN 6.2: touched symbol -> adapter and mandatory families (read by VM1's prepass and planner)
+train.py:clip_grads:           {adapter: grad_norm,        mandatory: [decomposition, reference]}
+train.py:train_step:           {adapter: train_step,       mandatory: [ga_invariance]}
+model.py:configure_optimizers: {adapter: optimizer_groups, mandatory: [config_audit]}
+model.py:GPT.forward:          {adapter: loss_module,      mandatory: [reference, edge_sweep]}
+"*":                           {mandatory: [ga_invariance, config_audit]}
