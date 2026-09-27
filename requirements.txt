@@ -1,0 +1,11 @@
+# VM1 control plane and offline receipt verify (versions as deployed on pl-control).
+# The sandbox runner image (sandboxd/runner.Dockerfile) installs torch CPU separately.
+cryptography==50.0.1
+fastapi==0.141.1
+httpx==0.28.1
+Jinja2==3.1.6
+jsonschema==4.26.0
+openai==3.19.2
+python-multipart==0.0.32
+PyYAML==6.0.3
+uvicorn==0.54.0

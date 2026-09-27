@@ -1,7 +1,8 @@
 """Bake-off scoring, exactly the pre-registered rubric (PROTOCOL.md, PLAN 4.8). Text only: nothing executes.
 
   python bakeoff/score.py --llm-judge   same model, same rubric, every adjudication item -> bakeoff/labels_llm.jsonl
-  python bakeoff/score.py               results.csv + scores.json (human label wins, LLM label for leftovers)
+  python bakeoff/score.py               results.csv + scores.json (labels.jsonl wins, LLM label for leftovers;
+                                        labels.jsonl rows carry "by": human, or panel = 3 blind agents, majority, amendment 6)
 
 Mechanical, per output:
   L = a finding names the scope file (basename ok) and the function (FUNC below, the rubric's function
@@ -167,7 +168,7 @@ def score():
     rows = []
     for o in outputs():
         lab = hum.get(o["key"]) or llm_.get(o["key"]) or {}
-        src = "human" if o["key"] in hum else "llm" if o["key"] in llm_ else "none"
+        src = hum[o["key"]].get("by", "human") if o["key"] in hum else "llm" if o["key"] in llm_ else "none"
         if o["which"] == "intro":
             m, t = bool(lab.get("m")) and o["L"], bool(lab.get("t")) and o["L"]
             res = "CAUGHT" if o["L"] and m and o["A"] else "PARTIAL" if o["L"] and (m or t) else "MISSED"
@@ -192,7 +193,7 @@ def score():
                                      "false_alarms": st(per("fix", "FALSE_ALARM")), "caught_runs_by_case": case_k,
                                      "n_intro": 12, "n_fix": 12, "runs": 3}
     best = max(cells, key=lambda k: (cells[k]["caught"]["mean"], -cells[k]["false_alarms"]["mean"], k.endswith("p1")))
-    labels = {s: sum(1 for r in rows if r["label"] == s) for s in ("human", "llm", "none")}
+    labels = {s: sum(1 for r in rows if r["label"] == s) for s in ("human", "panel", "llm", "none")}
     out = {"cells": cells, "best_cell": best, "labels": labels, "agreement": agreement(hum, llm_),
            "n_outputs": len(rows), "n_errors": sum(1 for r in rows if r["status"] != "ok"),
            "n_salvaged": sum(1 for r in rows if r["salvaged"]),

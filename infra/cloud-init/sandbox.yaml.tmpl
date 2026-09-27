@@ -19,3 +19,4 @@ runcmd:
   - runsc install --runtime runsc-trace -- --network=none --debug --debug-log=/var/log/runsc/%ID%.%COMMAND%.log --strace --strace-syscalls=openat,execve,connect,socket
   - systemctl restart docker
   - docker run --rm --runtime=runsc hello-world > /root/gvisor-ok.txt 2>&1
+  - echo '17 * * * * root find /var/log/runsc /srv/jobs -mindepth 1 -mmin +720 -delete 2>/dev/null' > /etc/cron.d/plumbline-clean

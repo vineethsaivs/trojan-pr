@@ -1,0 +1,118 @@
+{
+ "cells": {
+  "deepseek-v4-flash-0731/p0": {
+   "caught": {
+    "per_run": [
+     0,
+     1,
+     0
+    ],
+    "mean": 0.33,
+    "min": 0,
+    "max": 1
+   },
+   "partial": {
+    "per_run": [
+     0,
+     0,
+     1
+    ],
+    "mean": 0.33,
+    "min": 0,
+    "max": 1
+   },
+   "false_alarms": {
+    "per_run": [
+     2,
+     0,
+     2
+    ],
+    "mean": 1.33,
+    "min": 0,
+    "max": 2
+   },
+   "caught_runs_by_case": {
+    "ds-8313": 0,
+    "ds-8533": 0,
+    "st-3921": 1,
+    "ds-8334": 0,
+    "ray-65747": 0,
+    "st-4019": 0,
+    "st-3868": 0,
+    "ray-65535": 0,
+    "ray-65790": 0,
+    "zoo-1286": 0,
+    "unsloth-11337": 0,
+    "unsloth-11470": 0
+   },
+   "n_intro": 12,
+   "n_fix": 12,
+   "runs": 3
+  },
+  "deepseek-v4-flash-0731/p1": {
+   "caught": {
+    "per_run": [
+     4,
+     3,
+     4
+    ],
+    "mean": 3.67,
+    "min": 3,
+    "max": 4
+   },
+   "partial": {
+    "per_run": [
+     1,
+     1,
+     1
+    ],
+    "mean": 1.0,
+    "min": 1,
+    "max": 1
+   },
+   "false_alarms": {
+    "per_run": [
+     1,
+     2,
+     2
+    ],
+    "mean": 1.67,
+    "min": 1,
+    "max": 2
+   },
+   "caught_runs_by_case": {
+    "ds-8313": 0,
+    "ds-8533": 0,
+    "st-3921": 2,
+    "ds-8334": 2,
+    "ray-65747": 1,
+    "st-4019": 1,
+    "st-3868": 1,
+    "ray-65535": 0,
+    "ray-65790": 1,
+    "zoo-1286": 3,
+    "unsloth-11337": 0,
+    "unsloth-11470": 0
+   },
+   "n_intro": 12,
+   "n_fix": 12,
+   "runs": 3
+  }
+ },
+ "best_cell": "deepseek-v4-flash-0731/p1",
+ "labels": {
+  "human": 0,
+  "panel": 43,
+  "llm": 0,
+  "none": 101
+ },
+ "agreement": {
+  "n_overlap": 43,
+  "agree": 34
+ },
+ "n_outputs": 144,
+ "n_errors": 1,
+ "n_salvaged": 9,
+ "n_items": 43,
+ "cmd": "python bakeoff/score.py"
+}

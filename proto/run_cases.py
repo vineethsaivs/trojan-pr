@@ -1,13 +1,13 @@
 """Replay each historical corpus bug through function-extract and run the oracle a
 planner would pick. Prints one row per (case, check, sha). No repo is installed."""
-import json, math, random, sys, time, types
+import json, math, os, random, sys, time, types
 import torch
 from extract import Loader
 from fetch import fetch_closure
 from shims import SHIMS
 import oracles as O
 
-CORPUS = "/Users/vineethsai/Desktop/plumbline/corpus"
+CORPUS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "corpus")
 
 
 def load_yaml(p):

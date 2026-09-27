@@ -10,7 +10,7 @@ from plumbline import db
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-ROLE = os.environ.get("PL_ROLE", "operator")
+ROLE = os.environ.get("PL_ROLE", "judge")   # least privilege if the unit forgets it
 CHIP = {"judge": "judge · PIN · via NetBird", "operator": "operator · NetBird peer"}[ROLE]
 LABELS = ["pre", "intro", "fixp", "fix"]
 _sha = os.path.join(ROOT, "GIT_SHA")
@@ -20,6 +20,14 @@ EVAL_HARNESS = "harness-frozen-v2"
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/static", StaticFiles(directory=os.path.join(HERE, "static")), name="static")
 T = Jinja2Templates(directory=os.path.join(HERE, "templates"))
+_LIVE, _CUR = threading.BoundedSemaphore(1), {"id": None}   # one live run at a time: each costs model calls + 4 sandbox jobs
+
+
+@app.middleware("http")
+async def _no_framing(request, call_next):
+    r = await call_next(request)
+    r.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
+    return r
 
 
 def _cases():
@@ -96,13 +104,27 @@ def case(request: Request, cid: str):
     return T.TemplateResponse(request, "case.html", _ctx(request, c=c, runs=runs, can_run=can_run))
 
 
+def _live(cid, run_id):
+    from plumbline.sentinel import run_pr
+    try:
+        run_pr(cid, "intro", run_id=run_id, cap_s=45)
+    finally:
+        _CUR["id"] = None
+        _LIVE.release()
+
+
 @app.post("/cases/{cid}/run")
-def run_case(cid: str):
+def run_case(cid: str, request: Request):
+    if request.headers.get("sec-fetch-site", "same-origin") not in ("same-origin", "none"):
+        raise HTTPException(403, "cross-site run requests are refused")
     if ROLE != "operator" and cid not in HEROES:
         raise HTTPException(403, "judges can run the hero cases only")
-    from plumbline.sentinel import run_pr
-    run_id = f"{cid}-live-{uuid.uuid4().hex[:6]}"
-    threading.Thread(target=run_pr, args=(cid, "intro"), kwargs={"run_id": run_id, "cap_s": 45}, daemon=True).start()
+    if not _LIVE.acquire(blocking=False):
+        if _CUR["id"]:
+            return RedirectResponse(f"/runs/{_CUR['id']}", status_code=303)   # join the run in progress
+        raise HTTPException(429, "a run is starting, try again in a few seconds")
+    run_id = _CUR["id"] = f"{cid}-live-{uuid.uuid4().hex[:6]}"
+    threading.Thread(target=_live, args=(cid, run_id), daemon=True).start()
     return RedirectResponse(f"/runs/{run_id}", status_code=303)
 
 

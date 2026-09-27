@@ -12,7 +12,7 @@ RUNTIME = os.environ.get("SANDBOXD_RUNTIME", "runsc-trace")
 JOB_ID = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 HARNESS = re.compile(r"^harness(-frozen-v\d+)?$")
 SLOTS = threading.Semaphore(3)
-app = FastAPI()
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
 
 def _out(*cmd):
@@ -64,7 +64,7 @@ def run_job(job: Job):
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(base64.b64decode(b64))
     name = f"pl-{job.job_id}"
-    cmd = ["docker", "run", "--rm", "--name", name, f"--runtime={RUNTIME}", "--network", "none", "--read-only",
+    cmd = ["docker", "run", "--rm", "--log-driver", "none", "--name", name, f"--runtime={RUNTIME}", "--network", "none", "--read-only",
            "--tmpfs", "/work:rw,size=512m,mode=1777", "--tmpfs", "/tmp:rw,size=256m,mode=1777",
            "-v", f"{d}:/job:ro", "-v", f"{OPT / job.harness}:/harness:ro",
            "-v", f"{OPT / 'target/minigpt'}:/opt/minigpt:ro",

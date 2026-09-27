@@ -75,7 +75,7 @@ def fetch_case(c):
 
 
 if __name__ == "__main__":
-    facts = {c["id"]: c for c in json.load(open(os.path.join(ROOT, "research/cases_facts.json")))["cases"]}
+    facts = {c["id"]: c for c in json.load(open(os.path.join(ROOT, "results", "cases.json")))}
     for cid in sys.argv[1:] or H:
         try:
             o = fetch_case(facts[cid])

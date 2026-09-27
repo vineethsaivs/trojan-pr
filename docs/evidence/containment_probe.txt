@@ -1,0 +1,14 @@
+# Containment probe output (Sat Sep 26 23:29 PDT)
+# cmd: docker run with sandboxd/server.py's exact flags (runsc-trace, --network none, --read-only, --cap-drop ALL, uid 10001) running docs/evidence/containment_probe.py on pl-sandbox
+egress tcp 1.1.1.1:443: BLOCKED (OSError)
+dns resolve github.com: BLOCKED (gaierror)
+cloud metadata 169.254.169.254: BLOCKED (URLError)
+VM1 NetBird IP :8080: BLOCKED (OSError)
+write /etc/probe: BLOCKED (PermissionError)
+write /job/probe: BLOCKED (PermissionError)
+write /harness/probe: BLOCKED (PermissionError)
+write /usr/probe: BLOCKED (PermissionError)
+write /work/probe (tmpfs, allowed by design): ALLOWED
+uid/gid: 10001 10001
+kernel: 4.19.0-gvisor
+env keys: ['GPG_KEY']

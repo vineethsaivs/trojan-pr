@@ -1,0 +1,14 @@
+# External port probe from the laptop over the public internet (Sat Sep 26 23:04 PDT)
+# cmd: nc -z -G 3 <public ip> <port>  (Vultr firewall group has zero inbound rules)
+pl-control public:22 closed
+pl-control public:80 closed
+pl-control public:443 closed
+pl-control public:7070 closed
+pl-control public:8080 closed
+pl-control public:8081 closed
+pl-sandbox public:22 closed
+pl-sandbox public:80 closed
+pl-sandbox public:443 closed
+pl-sandbox public:7070 closed
+pl-sandbox public:8080 closed
+pl-sandbox public:8081 closed

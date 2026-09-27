@@ -56,7 +56,7 @@
 <h1>Cases</h1>
 <p class="lead">{{ rows|length }} silent math bugs that merged, shipped, and were later fixed. The first {{ n }} are the eval set. Dev rows are in-sample.</p>
 {% set lb = (numbers.get("reviewer") or {}).get("labels") %}
-{% if lb %}<p class="provenance">AI reviewer: <span class="mono">deepseek-v4-flash</span> on Vultr, 3 runs per PR, scored blind by the pre-registered rubric ({{ lb.human }} outputs labelled by hand, {{ lb.llm }} by an LLM judge). The bug list in its prompt came from my own fixes, so it is in-sample for every case.</p>{% endif %}
+{% if lb %}<p class="provenance">AI reviewer: <span class="mono">deepseek-v4-flash</span> on Vultr, 3 runs per PR, scored blind by the pre-registered rubric ({% if lb.human %}{{ lb.human }} outputs labelled by hand, {% endif %}{% if lb.panel %}{{ lb.panel }} by a blind 3-agent panel, majority vote, delegated by the author, {% endif %}{{ lb.llm }} by an LLM judge). The bug list in its prompt came from my own fixes, so it is in-sample for every case.</p>{% endif %}
 
 <div class="scroll" tabindex="0" role="region" aria-label="Case table">
 <table class="cases">

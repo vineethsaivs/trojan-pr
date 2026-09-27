@@ -1,0 +1,7 @@
+# Vultr instance evidence (from each VM's Vultr metadata service, 169.254.169.254/v1.json, Sat Sep 26 23:03 PDT)
+# cmd: ssh <vm> 'curl -s http://169.254.169.254/v1.json' ; uname -sr ; runsc --version ; ss -tln
+pl-control  instance 108793228  region ATL  Ubuntu 24.04 (Linux 6.8.0-139-generic)
+  listeners: 22 (blocked by Vultr firewall group), 8080 judge app and 8081 operator app on the NetBird IP only
+pl-sandbox  instance 108793237  region ATL  Ubuntu 24.04 (Linux 6.8.0-139-generic), gVisor runsc release-20260921.0
+  listeners: 22 (blocked by Vultr firewall group), 7070 sandboxd on the NetBird IP only
+LLM calls: Vultr Serverless Inference, https://api.vultrinference.com/v1, model deepseek-v4-flash-0731

@@ -1,0 +1,352 @@
+{
+ "eval": {
+  "harness-frozen-v2": {
+   "ds-8313/intro": {
+    "run_id": "ds-8313-intro-12b97e",
+    "verdict": "BLOCK",
+    "reason": "invariant broken by the change: m1.1, m1.2, m2.1, m2.2",
+    "created_at": "2026-09-27T03:10:53.350617+00:00",
+    "plan_source": "prepass_default",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "PASS",
+     "fixp": "FAIL",
+     "intro": "FAIL",
+     "pre": "PASS"
+    }
+   },
+   "ds-8533/intro": {
+    "run_id": "ds-8533-intro-59f61b",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: deepspeed/runtime/zero/muon/original_muon.py:Muon.__init__, deepspeed/runtime/zero/muon/original_muon.py:Muon.step, deepspeed/runtime/zero/muon/original_muon.py:MuonWithAuxAdam.__init__, deepspeed/runtime/zero/muon/original_muon.py:MuonWithAuxAdam.step, deepspeed/runtime/zero/muon/original_muon.py:SingleDeviceMuon.__init__, deepspeed/runtime/zero/muon/original_muon.py:SingleDeviceMuon.step, deepspeed/runtime/zero/muon/original_muon.py:SingleDeviceMuonWithAuxAdam.__init__, deepspeed/runtime/zero/muon/original_muon.py:SingleDeviceMuonWithAuxAdam.step, deepspeed/runtime/zero/muon/original_muon.py:muon_update, deepspeed/runtime/zero/muon/original_muon.py:zeropower_via_gram_newtonschulz, deepspeed/runtime/zero/muon/original_muon.py:zeropower_via_newtonschulz5",
+    "created_at": "2026-09-27T03:11:31.447126+00:00",
+    "plan_source": "planner",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "ERROR",
+     "intro": "ERROR",
+     "pre": "ERROR"
+    }
+   },
+   "st-3921/intro": {
+    "run_id": "st-3921-intro-f4b642",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py:GlobalOrthogonalRegularizationLoss.__init__, sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py:GlobalOrthogonalRegularizationLoss.citation, sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py:GlobalOrthogonalRegularizationLoss.compute_gor, sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py:GlobalOrthogonalRegularizationLoss.compute_loss_from_embeddings, sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py:GlobalOrthogonalRegularizationLoss.forward, sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py:GlobalOrthogonalRegularizationLoss.get_config_dict",
+    "created_at": "2026-09-27T03:11:50.604539+00:00",
+    "plan_source": "planner_partial",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "ERROR",
+     "intro": "ERROR",
+     "pre": "ERROR"
+    }
+   },
+   "ds-8334/intro": {
+    "run_id": "ds-8334-intro-91e7f2",
+    "verdict": "BLOCK",
+    "reason": "invariant broken by the change: c2",
+    "created_at": "2026-09-27T03:12:11.196139+00:00",
+    "plan_source": "planner",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "PASS",
+     "fixp": "FAIL",
+     "intro": "FAIL",
+     "pre": "ERROR"
+    }
+   },
+   "ray-65747/intro": {
+    "run_id": "ray-65747-intro-413dcd",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: python/ray/tune/pbt.py:PBTTrialState.__init__, python/ray/tune/pbt.py:PBTTrialState.__repr__, python/ray/tune/pbt.py:PopulationBasedTraining.__init__, python/ray/tune/pbt.py:PopulationBasedTraining._exploit, python/ray/tune/pbt.py:PopulationBasedTraining._explore, python/ray/tune/pbt.py:PopulationBasedTraining._get_best_trial, python/ray/tune/pbt.py:PopulationBasedTraining._is_empty, python/ray/tune/pbt.py:PopulationBasedTraining._quantiles, python/ray/tune/pbt.py:PopulationBasedTraining._truncation_ready, python/ray/tune/pbt.py:PopulationBasedTraining.choose_trial_to_run, python/ray/tune/pbt.py:PopulationBasedTraining.debug_string, python/ray/tune/pbt.py:PopulationBasedTraining.last_scores, python/ray/tune/pbt.py:PopulationBasedTraining.on_trial_add, python/ray/tune/pbt.py:PopulationBasedTraining.on_trial_complete, python/ray/tune/pbt.py:PopulationBasedTraining.on_trial_result, python/ray/tune/pbt.py:PopulationBasedTraining.reset_stats, python/ray/tune/pbt.py:explore, python/ray/tune/pbt.py:make_experiment_tag",
+    "created_at": "2026-09-27T03:12:25.641248+00:00",
+    "plan_source": "prepass_default",
+    "planner_version": "v1.2",
+    "statuses": {}
+   },
+   "st-4019/intro": {
+    "run_id": "st-4019-intro-584673",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py:BatchHardSoftMarginTripletLoss.__init__, sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py:BatchHardSoftMarginTripletLoss.batch_hard_triplet_soft_margin_loss, sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py:BatchHardSoftMarginTripletLoss.forward",
+    "created_at": "2026-09-27T03:13:09.940605+00:00",
+    "plan_source": "planner",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "ERROR",
+     "intro": "FAIL",
+     "pre": "ERROR"
+    }
+   },
+   "st-3868/intro": {
+    "run_id": "st-3868-intro-19b4ba",
+    "verdict": "PASS",
+    "reason": "1 clean target(s); nothing blocking",
+    "created_at": "2026-09-27T03:13:27.384349+00:00",
+    "plan_source": "planner_partial",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "PASS",
+     "intro": "PASS",
+     "pre": "ERROR"
+    }
+   },
+   "ray-65535/intro": {
+    "run_id": "ray-65535-intro-540737",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: python/ray/tune/search/sample.py:Quantized.sample",
+    "created_at": "2026-09-27T03:13:44.320154+00:00",
+    "plan_source": "planner_partial",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "FAIL",
+     "fixp": "FAIL",
+     "intro": "FAIL",
+     "pre": "FAIL"
+    }
+   },
+   "ray-65790/intro": {
+    "run_id": "ray-65790-intro-31c3ac",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: python/ray/tune/schedulers/pbt.py:PopulationBasedTraining.__init__, python/ray/tune/schedulers/pbt.py:PopulationBasedTraining._exploit, python/ray/tune/schedulers/pbt.py:PopulationBasedTraining._log_config_on_step, python/ray/tune/schedulers/pbt.py:PopulationBasedTraining._quantiles, python/ray/tune/schedulers/pbt.py:PopulationBasedTraining.choose_trial_to_run",
+    "created_at": "2026-09-27T03:14:28.678723+00:00",
+    "plan_source": "planner_partial",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "ERROR",
+     "intro": "ERROR",
+     "pre": "ERROR"
+    }
+   },
+   "zoo-1286/intro": {
+    "run_id": "zoo-1286-intro-fcee9c",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: unsloth_zoo/rl_replacements.py:UnslothEfficientGRPO.backward, unsloth_zoo/rl_replacements.py:UnslothEfficientGRPO.forward.accumulate_chunk, unsloth_zoo/rl_replacements.py:UnslothEfficientGRPO.forward.compute_loss, unsloth_zoo/rl_replacements.py:align_logprobs_with_mask, unsloth_zoo/rl_replacements.py:grpo_accumulated_loss, unsloth_zoo/rl_replacements.py:grpo_compute_loss",
+    "created_at": "2026-09-27T03:14:49.474072+00:00",
+    "plan_source": "planner_partial",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "FAIL",
+     "fixp": "FAIL",
+     "intro": "ERROR",
+     "pre": "ERROR"
+    }
+   },
+   "unsloth-11337/intro": {
+    "run_id": "unsloth-11337-intro-a93169",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: unsloth/models/rl_replacements.py:grpo_trainer__generate_and_score_completions, unsloth/models/rl_replacements.py:grpo_trainer_compute_loss.compute_loss",
+    "created_at": "2026-09-27T03:15:44.663228+00:00",
+    "plan_source": "planner_partial",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "ERROR",
+     "intro": "ERROR",
+     "pre": "ERROR"
+    }
+   },
+   "unsloth-11470/intro": {
+    "run_id": "unsloth-11470-intro-72f177",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: unsloth/trainer.py:UnslothTrainer.create_optimizer, unsloth/trainer.py:_create_unsloth_optimizer",
+    "created_at": "2026-09-27T03:16:06.570922+00:00",
+    "plan_source": "planner_partial",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "ERROR",
+     "intro": "ERROR",
+     "pre": "ERROR"
+    }
+   },
+   "ds-8313/fix": {
+    "run_id": "ds-8313-fix-a9346c",
+    "verdict": "PASS",
+    "reason": "1 clean target(s); nothing blocking",
+    "created_at": "2026-09-27T03:17:04.597128+00:00",
+    "plan_source": "prepass_default",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "PASS",
+     "fixp": "FAIL"
+    }
+   },
+   "ds-8533/fix": {
+    "run_id": "ds-8533-fix-8ab429",
+    "verdict": "PASS",
+    "reason": "1 clean target(s); nothing blocking",
+    "created_at": "2026-09-27T03:17:29.883229+00:00",
+    "plan_source": "planner_repaired",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "FAIL",
+     "fixp": "FAIL"
+    }
+   },
+   "st-3921/fix": {
+    "run_id": "st-3921-fix-13fcfd",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: sentence_transformers/sentence_transformer/losses/global_orthogonal_regularization.py:GlobalOrthogonalRegularizationLoss.compute_gor",
+    "created_at": "2026-09-27T03:17:49.060221+00:00",
+    "plan_source": "planner",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "ERROR"
+    }
+   },
+   "ds-8334/fix": {
+    "run_id": "ds-8334-fix-f9562e",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: deepspeed/runtime/data_pipeline/curriculum_scheduler.py:CurriculumScheduler.__fixed_root_get_difficulty",
+    "created_at": "2026-09-27T03:18:03.044306+00:00",
+    "plan_source": "prepass_default",
+    "planner_version": "v1.2",
+    "statuses": {}
+   },
+   "ray-65747/fix": {
+    "run_id": "ray-65747-fix-133ff5",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: python/ray/tune/schedulers/pbt.py:_explore",
+    "created_at": "2026-09-27T03:18:40.798011+00:00",
+    "plan_source": "planner",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "ERROR"
+    }
+   },
+   "st-4019/fix": {
+    "run_id": "st-4019-fix-17b3d2",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: sentence_transformers/sentence_transformer/losses/batch_hard_soft_margin_triplet.py:BatchHardSoftMarginTripletLoss.batch_hard_triplet_soft_margin_loss",
+    "created_at": "2026-09-27T03:18:50.686306+00:00",
+    "plan_source": "planner",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "ERROR"
+    }
+   },
+   "st-3868/fix": {
+    "run_id": "st-3868-fix-9436dc",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: sentence_transformers/sparse_encoder/losses/sparse_cosent.py:SparseCoSENTLoss.__init__",
+    "created_at": "2026-09-27T03:19:02.902818+00:00",
+    "plan_source": "planner",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "ERROR"
+    }
+   },
+   "ray-65535/fix": {
+    "run_id": "ray-65535-fix-a4ccc0",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: python/ray/tune/search/sample.py:Quantized.sample",
+    "created_at": "2026-09-27T03:19:18.279535+00:00",
+    "plan_source": "prepass_default",
+    "planner_version": "v1.2",
+    "statuses": {}
+   },
+   "ray-65790/fix": {
+    "run_id": "ray-65790-fix-a35de6",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: python/ray/tune/schedulers/pbt.py:PopulationBasedTraining._quantiles",
+    "created_at": "2026-09-27T03:19:53.329775+00:00",
+    "plan_source": "prepass_default",
+    "planner_version": "v1.2",
+    "statuses": {}
+   },
+   "zoo-1286/fix": {
+    "run_id": "zoo-1286-fix-09b0c2",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: unsloth_zoo/rl_replacements.py:grpo_accumulated_loss._adapter, unsloth_zoo/rl_replacements.py:grpo_accumulated_loss.efficient_log_softmax, unsloth_zoo/rl_replacements.py:grpo_compute_loss",
+    "created_at": "2026-09-27T03:20:23.622963+00:00",
+    "plan_source": "planner",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "ERROR"
+    }
+   },
+   "unsloth-11337/fix": {
+    "run_id": "unsloth-11337-fix-c1c19f",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: unsloth/models/rl_replacements.py:_patch_grpo_accumulated_loss_hidden_states_dispatch.replace_width_dispatch, unsloth/models/rl_replacements.py:_unsloth_grpo_accumulation_steps",
+    "created_at": "2026-09-27T03:21:52.751639+00:00",
+    "plan_source": "planner_partial",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "ERROR"
+    }
+   },
+   "unsloth-11470/fix": {
+    "run_id": "unsloth-11470-fix-c6fad5",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: unsloth/trainer.py:UnslothTrainingArguments.__init__, unsloth/trainer.py:_chunked_loss_bypasses_forward, unsloth/trainer.py:_create_unsloth_optimizer, unsloth/trainer.py:_is_hybrid_linear_attention_model, unsloth/trainer.py:_resolve_string_model_class, unsloth/trainer.py:_resolve_string_model_config, unsloth/trainer.py:unsloth_train",
+    "created_at": "2026-09-27T03:22:26.788752+00:00",
+    "plan_source": "prepass_default",
+    "planner_version": "v1.2",
+    "statuses": {}
+   }
+  },
+  "harness-frozen-v4": {
+   "st-3921/intro": {
+    "run_id": "st-3921-intro-e88a93",
+    "verdict": "BLOCK",
+    "reason": "invariant broken by the change: c1",
+    "created_at": "2026-09-27T04:03:40.511951+00:00",
+    "plan_source": "planner_partial",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "PASS",
+     "fixp": "FAIL",
+     "intro": "FAIL",
+     "pre": "ERROR"
+    }
+   },
+   "st-3921/fix": {
+    "run_id": "st-3921-fix-6cc73c",
+    "verdict": "NOT COVERED",
+    "reason": "no clean check for: sentence_transformers/sentence_transformer/losses/global_orthogonal_regularization.py:GlobalOrthogonalRegularizationLoss.compute_gor",
+    "created_at": "2026-09-27T04:03:44.855118+00:00",
+    "plan_source": "planner",
+    "planner_version": "v1.2",
+    "statuses": {
+     "fix": "ERROR",
+     "fixp": "ERROR"
+    }
+   }
+  }
+ },
+ "hand": {
+  "S1": {
+   "run_id": "hand-S1-fa481e",
+   "verdict": "BLOCK",
+   "created_at": "2026-09-27T03:21:53.028620+00:00",
+   "family": "reference",
+   "detail": "p=1, grads [3,-4],[2]: got 53, must be 9; worst relative gap to float64 reference over 1 cases; tol = 8.0 * eps(fp32) * sqrt(1)"
+  },
+  "H2": {
+   "run_id": "hand-H2-9b10e4",
+   "verdict": "PASS",
+   "created_at": "2026-09-27T03:24:32.959872+00:00",
+   "family": null,
+   "detail": null
+  },
+  "H3": {
+   "run_id": "hand-H3-9542b6",
+   "verdict": "PASS",
+   "created_at": "2026-09-27T03:24:57.390478+00:00",
+   "family": null,
+   "detail": null
+  }
+ }
+}

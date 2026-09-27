@@ -1,0 +1,8 @@
+# NetBird P2P between the VMs (Sat Sep 26 23:29 PDT)
+# cmd: ssh pl-control 'netbird status -d'  (pl-sandbox section; public endpoints masked)
+ pl-sandbox.netbird.cloud:
+  Status: Connected
+  Connection type: P2P
+  ICE candidate (Local/Remote): host/srflx
+  Relay server address: rels://streamline-us-chi1-2.relay.netbird.io:443
+  Last WireGuard handshake: 45 seconds ago

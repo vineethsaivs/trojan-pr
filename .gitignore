@@ -35,3 +35,10 @@ runs/
 venv/
 __pycache__/
 .DS_Store
+
+# private keys and certs (only the public receipt key ships)
+keys/*
+!keys/plumbline.pub
+*.pem*
+# agent instructions (private paths)
+CLAUDE.md

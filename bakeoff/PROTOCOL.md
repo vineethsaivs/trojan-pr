@@ -168,3 +168,33 @@ blind plans of `st-3921-intro-f4b642` and `st-3921-fix-13fcfd` are re-executed o
 frozen-v4 (no replanning, no plan edits) and reported whatever they return. The other 8 cases need
 case knowledge (fixtures, trigger scales, cross-repo pairing) that a blind plan does not have; their
 reasons are listed, not patched.
+
+## Amendment 6 (Sat Sep 26 23:10 PDT; adjudicator change, disclosed)
+
+The author delegated the adjudication step (planned: the author labels by hand with
+`bakeoff/adjudicate.py`, 30 minute cap). Instead, each of the 43 adjudication items (31 L-passing
+intro outputs, 12 actionable fix outputs) was labelled by three independent blind agents (Claude,
+separate contexts), with the model, prompt and run hidden, using the rubric text of `score.py`
+verbatim. The fix-item agents were also given the fix diff and the file at the fix head to check
+the claimed defect against the code. The majority label per field is stored in `bakeoff/labels.jsonl`
+with `"by": "panel"`, the vote count, whether it was unanimous and one quoted reason.
+Unanimous on 39 of 43 items (split: items 10, 17, 26, 41). Agreement with the pre-existing LLM
+judge (deepseek-v4-flash, `labels_llm.jsonl`): 34 of 43. No label was edited by hand after the vote.
+Scoring rule, rubric, items and denominators are unchanged. Result (`python bakeoff/score.py`):
+P1 caught 3.67 of 12 [3, 4], false alarms 1.67 of 12 [1, 2]; P0 caught 0.33 of 12 [0, 1],
+false alarms 1.33 of 12 [0, 2].
+
+## Errata (Sat Sep 26 23:35 PDT; corrections only, no change to any rule or result)
+
+1. The caveat above says the Vultr models were deployed "August 25 to September 15 2026". That range
+   is right for the excluded candidates but wrong for the only model used: deepseek-v4-flash-0731 has
+   `created` = August 17 2026 in `bakeoff/models.json`. Its training cutoff is unknown.
+2. Harness hashes (sandboxd `harness_sha256`, recomputed on VM2): frozen-v1 `71643ef9...dccd2` and
+   frozen-v2 `e1024e8e...fed0e` as above; frozen-v3 (game) `d184f7be5b9cf461e0a473772637315e63b25f801f63a323f8f59c9b53028af7`;
+   frozen-v4 (amendment 5, post-hoc) `dead3d971ba33bdc8c445fd8d57f1380a7185223cfd6a3fc053fcd290e4a5c25`.
+3. The P0 and P1 prompts differ in the bug list: P1 has the ten patterns with triggers; the planner
+   gets the pattern names only, plus the static prepass output and its mandatory checks. For
+   `clip_grad_norm_`-shaped functions those mandatory checks (split invariance and a torch reference
+   at p in {2, 1, 3}) were written knowing the ds-8313 bug; the pre-registered ds-8313 BLOCK came from
+   them (`plan.source` = `prepass_default`), not from the planner. The ds-8334 BLOCK came from a check
+   the planner chose.
