@@ -19,6 +19,7 @@ infra/cloud-init/*.yaml
 proto/cache/
 proto/src/
 proto/intro/*.base.py
+proto/intro/*.head.py
 replay/cases/*/*
 !replay/cases/*/oracle.py
 !replay/cases/*/oracle*.out
