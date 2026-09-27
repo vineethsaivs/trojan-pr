@@ -152,3 +152,19 @@ All 24 Sentinel runs are rerun on frozen-v2 with planner v1.2; earlier runs stay
 labeled by harness and planner version. Disclosure: when the v1.1 queue was stopped, the held-out
 case st-3868 had been planned and dispatched but produced no result; that plan and its interrupted
 run were not inspected and are superseded like the others.
+
+## Amendment 5 (Sat Sep 26 21:40 PDT, POST-HOC: written after every pre-registered result was seen)
+
+Reported separately; the pre-registered result (`harness-frozen-v2`, planner v1.2: intro BLOCK 2/12,
+PASS 1/12, NOT COVERED 9/12; fix PRs BLOCK 0/12) stays the headline and is never replaced.
+A read-only diagnosis of the 9 NOT COVERED intro runs found one generic harness gap with a plausible
+detection behind it: on st-3921 (dev, in-sample) every check of the blind plan (including an
+edge_sweep with `batch_1` on `compute_gor`) ended ERROR because the plan's `construct` omitted the
+required `model` argument, which `compute_gor` never uses. Change: the call adapter passes a stand-in
+for any required constructor argument the plan omits; any use of the stand-in raises HarnessError
+(ERROR), so it can turn a binding ERROR into a clean check, never into a detection. Frozen as
+`harness-frozen-v4`, with `tests/harness/test_omitted_ctor.py`. Committed before the run: the STORED
+blind plans of `st-3921-intro-f4b642` and `st-3921-fix-13fcfd` are re-executed once each on
+frozen-v4 (no replanning, no plan edits) and reported whatever they return. The other 8 cases need
+case knowledge (fixtures, trigger scales, cross-repo pairing) that a blind plan does not have; their
+reasons are listed, not patched.

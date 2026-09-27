@@ -120,7 +120,8 @@ def _git_sha():
     return open(p).read().strip() if os.path.exists(p) else "unknown"
 
 
-def run_pr(cid, which="intro", harness="harness", run_id=None, conn=None, cap_s=45):
+def run_pr(cid, which="intro", harness="harness", run_id=None, conn=None, cap_s=45, plan=None):
+    """plan: re-execute a stored plan as is (amendment 5), no planner call."""
     from plumbline import receipt                 # VM1 venv deps (cryptography, openai, jsonschema)
     from plumbline.planner import make_plan
     t0 = time.time()
@@ -136,12 +137,15 @@ def run_pr(cid, which="intro", harness="harness", run_id=None, conn=None, cap_s=
                "base_sha": ci["commits"][base_l]["sha"], "head_sha": ci["commits"][head_l]["sha"],
                "diff_sha256": hashlib.sha256(diff.encode()).hexdigest(), "kind": "hist", "case": cid, "which": which,
                "harness": harness, "planner_version": __import__("plumbline.planner", fromlist=["x"]).PLANNER_VERSION}
+    if plan:
+        subject["plan_from"] = plan.get("from_run")      # stored blind plan, re-executed as is
     db.upsert(conn, "runs", id=run_id, kind="hist", case_id=cid, subject=subject, status="planning",
               created_at=datetime.now(timezone.utc).isoformat())
     head_src = open(os.path.join(d, "scope.py")).read()
     base_src = gh_raw(ci["repo"], bp, ci["commits"][base_l]["sha"]) if bp else None
     pre = prepass(diff, {hp: head_src}, {bp: base_src} if base_src else None)
-    plan = make_plan(diff, f"{meta.get('title', '')}\n\n{meta.get('body') or ''}", pre, cap_s=cap_s)
+    if not plan:
+        plan = make_plan(diff, f"{meta.get('title', '')}\n\n{meta.get('body') or ''}", pre, cap_s=cap_s)
     checks = plan["checks"]
     db.update_run(conn, run_id, status="running", plan={k: v for k, v in plan.items() if k != "model_calls"})
     ids = {c["id"] for c in checks}

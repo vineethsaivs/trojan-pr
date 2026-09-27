@@ -1,6 +1,7 @@
 """python -m plumbline.cli keygen <private.pem>      (prints the public key; VM1)
 python -m plumbline.cli hist <case> [intro|fix]       (historical Sentinel run; VM1)
 python -m plumbline.cli verify <receipt.json> --pin <keys/plumbline.pub>   (anywhere; exit 0 = valid)
+python -m plumbline.cli rerun <run_id> <harness>     (re-execute a stored plan, no planner call; amendment 5)
 python -m plumbline.cli queue [harness-frozen-v1]    (Sentinel triple control: 12 intro runs, then 12 fix runs; resumable)"""
 import base64, json, os, sys
 
@@ -75,6 +76,13 @@ if __name__ == "__main__":
         keygen(a[1])
     elif a[:1] == ["hist"]:
         hist(a[1], a[2] if len(a) > 2 else "intro")
+    elif a[:1] == ["rerun"]:
+        from plumbline import db
+        from plumbline.sentinel import run_pr
+        r = db.connect().execute("SELECT case_id, subject, plan FROM runs WHERE id=?", (a[1],)).fetchone()
+        plan = {**json.loads(r["plan"]), "from_run": a[1], "model_calls": []}   # no model call in a re-execution
+        out = run_pr(r["case_id"], json.loads(r["subject"])["which"], harness=a[2], plan=plan)
+        print(a[1], "->", out["run_id"] if "run_id" in out else "", out["verdict"], out["statuses"])
     elif a[:1] == ["queue"]:
         queue(*a[1:2])
     elif a[:1] == ["verify"] and "--pin" in a:

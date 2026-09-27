@@ -168,6 +168,35 @@ def _method(target, m):
 
 
 # ---- call adapter ---------------------------------------------------------------------------
+class _PlanOmittedArg:
+    """Stand-in for a required constructor arg the plan left out (amendment 5, post-hoc). Any use raises
+    HarnessError (ERROR), so it can turn a binding ERROR into a clean check, never into a detection."""
+    def __init__(self, name):
+        object.__setattr__(self, "_n", name)
+
+    def __getattr__(self, a):
+        if a.startswith("__"):
+            raise AttributeError(a)
+        raise O.HarnessError(f"constructor arg {self._n} not in the plan, and the target used it (_PlanOmittedArg)")
+
+    def __call__(self, *a, **k):
+        raise O.HarnessError(f"constructor arg {self._n} not in the plan, and the target called it (_PlanOmittedArg)")
+
+    def __repr__(self):
+        return f"_PlanOmittedArg({self._n})"
+
+
+def _construct(cls, kwargs):
+    try:
+        sig = inspect.signature(cls)
+    except (TypeError, ValueError):
+        return cls(**kwargs)
+    for n, p in sig.parameters.items():
+        if n not in kwargs and p.default is p.empty and p.kind in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY):
+            kwargs[n] = _PlanOmittedArg(n)
+    return cls(**kwargs)
+
+
 class Call:
     def __init__(self, mod, job, call):
         self.c, self.obj = call, resolve(mod, job, call["target"])
@@ -176,7 +205,8 @@ class Call:
         c, target = self.c, self.obj
         try:
             if "construct" in c:
-                target = target(**{k: build(v, sv, scale, dt) for k, v in c["construct"].items()})
+                kw_c = {k: build(v, sv, scale, dt) for k, v in c["construct"].items()}
+                target = _construct(target, kw_c) if isinstance(target, type) else target(**kw_c)
             if "set_attr" in c:
                 setattr(target, c["set_attr"], sv)
             fn = _method(target, c["method"]) if "method" in c else target
@@ -201,10 +231,12 @@ class Call:
         kw, args = a[-1], a[:-1]
         try:
             out = kw.fn(*args, **kw)
-        except O.DECLARED:
+        except Exception as e:
+            if "_PlanOmittedArg" in str(e) and not isinstance(e, O.HarnessError):
+                raise O.HarnessError(f"{type(e).__name__}: {e}") from e   # the stand-in was used: ERROR
+            if isinstance(e, O.BINDING):
+                raise TargetRaised(f"{type(e).__name__}: {e}") from e
             raise
-        except O.BINDING as e:
-            raise TargetRaised(f"{type(e).__name__}: {e}") from e
         o = self.c.get("output")
         if o is None:
             return out
