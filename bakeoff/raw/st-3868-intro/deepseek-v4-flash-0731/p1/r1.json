@@ -1,0 +1,43 @@
+{
+ "case": "st-3868",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 1,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "sentence_transformers/sparse_encoder/losses/SparseCoSENTLoss.py",
+    "function": "SparseCoSENTLoss.__init__",
+    "line_start": 26,
+    "line_end": 26,
+    "severity": "high",
+    "mechanism": "The code sets `model.similarity_fn_name = \"cosine\"` but the default `similarity_fct` is `util.cos_sim`, not `util.pairwise_cos_sim`. This sets the model's similarity function to cosine while the loss uses the full similarity matrix, not pairwise. This mismatch can lead to incorrect behavior when the loss is used inside SpladeLoss/CSRLoss, as the model's similarity function may not match the actual similarity computation used in the loss, potentially causing wrong loss values or unexpected errors. The PR description says the default is pairwise_cos_sim but the code uses cos_sim.",
+    "trigger": "Using the SparseCoSENTLoss with default parameters inside SpladeLoss or CSRLoss, where the model's similarity_fn_name is set to 'cosine' while the loss uses util.cos_sim (full matrix) rather than pairwise, leading to a mismatch.",
+    "consequence": "The model's similarity function is set to cosine but the loss uses the full similarity matrix, potentially causing incorrect loss computation or unexpected errors."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"sentence_transformers/sparse_encoder/losses/SparseCoSENTLoss.py\", \"function\": \"SparseCoSENTLoss.__init__\", \"line_start\": 26, \"line_end\": 26, \"severity\": \"high\", \"mechanism\": \"The code sets `model.similarity_fn_name = \\\"cosine\\\"` but the default `similarity_fct` is `util.cos_sim`, not `util.pairwise_cos_sim`. This sets the model's similarity function to cosine while the loss uses the full similarity matrix, not pairwise. This mismatch can lead to incorrect behavior when the loss is used inside SpladeLoss/CSRLoss, as the model's similarity function may not match the actual similarity computation used in the loss, potentially causing wrong loss values or unexpected errors. The PR description says the default is pairwise_cos_sim but the code uses cos_sim.\", \"trigger\": \"Using the SparseCoSENTLoss with default parameters inside SpladeLoss or CSRLoss, where the model's similarity_fn_name is set to 'cosine' while the loss uses util.cos_sim (full matrix) rather than pairwise, leading to a mismatch.\", \"consequence\": \"The model's similarity function is set to cosine but the loss uses the full similarity matrix, potentially causing incorrect loss computation or unexpected errors.\"}]}",
+ "input_sha256": {
+  "g2": "a10980b2ecafc0837d54d82672ccc1252c2b642ed2c7e5e4adf096780471b4cc",
+  "scope": "92d971382a27a6e0d6c51eada4b1297622a7303ed9cef088dc6adc7071bfb8fc",
+  "meta": "168d045ad41bb24de8a2828fdd309a3b399893ef4cb00c05ac9f6ba31c251074",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py st-3868"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 1584,
+   "tokens_out": 304,
+   "latency_ms": 4964,
+   "response_sha256": "0213cb86505db6db7b85daffae731f963de4e653a06f42504498b47b27423b38"
+  }
+ ],
+ "timestamp": "2026-09-27T02:57:59.849853+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

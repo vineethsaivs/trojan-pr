@@ -1,0 +1,43 @@
+{
+ "case": "unsloth-11470",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p0",
+ "run": 3,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "unsloth/trainer.py",
+    "function": "_create_unsloth_optimizer",
+    "line_start": 44,
+    "line_end": 90,
+    "severity": "high",
+    "mechanism": "The optimizer is created with `optimizer_cls(optimizer_grouped_parameters, **optimizer_kwargs)`. However, `optimizer_kwargs` already contains a `'lr'` key, and the param groups also specify `'lr'` individually. In many optimizers (e.g., torch.optim.AdamW), passing `lr` both in kwargs and in param groups causes the param group's `lr` to be overridden by the kwargs `lr` because the kwargs are applied after the param groups are constructed, or it may raise a conflict. This means the intended embedding learning rate may not be applied, and the non-embedding parameters may also get the wrong lr. The correct approach is to remove `'lr'` from `optimizer_kwargs` before passing it, or construct param groups without individual `lr` keys and rely on kwargs.",
+    "trigger": "User sets `embedding_learning_rate` in args and calls `create_optimizer()` on `UnslothTrainer` with a model that has PEFT adapter named `modules_to_save.default.weight`. The function attempts to set separate learning rates.",
+    "consequence": "The optimizer may be created with conflicting lr arguments, leading to incorrect learning rates for parameters, causing wrong training results (e.g., embedding parameters not getting the intended learning rate, or all parameters using the same lr). This can degrade training quality or cause a crash if the optimizer rejects duplicate lr."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"unsloth/trainer.py\", \"function\": \"_create_unsloth_optimizer\", \"line_start\": 44, \"line_end\": 90, \"severity\": \"high\", \"mechanism\": \"The optimizer is created with `optimizer_cls(optimizer_grouped_parameters, **optimizer_kwargs)`. However, `optimizer_kwargs` already contains a `'lr'` key, and the param groups also specify `'lr'` individually. In many optimizers (e.g., torch.optim.AdamW), passing `lr` both in kwargs and in param groups causes the param group's `lr` to be overridden by the kwargs `lr` because the kwargs are applied after the param groups are constructed, or it may raise a conflict. This means the intended embedding learning rate may not be applied, and the non-embedding parameters may also get the wrong lr. The correct approach is to remove `'lr'` from `optimizer_kwargs` before passing it, or construct param groups without individual `lr` keys and rely on kwargs.\", \"trigger\": \"User sets `embedding_learning_rate` in args and calls `create_optimizer()` on `UnslothTrainer` with a model that has PEFT adapter named `modules_to_save.default.weight`. The function attempts to set separate learning rates.\", \"consequence\": \"The optimizer may be created with conflicting lr arguments, leading to incorrect learning rates for parameters, causing wrong training results (e.g., embedding parameters not getting the intended learning rate, or all parameters using the same lr). This can degrade training quality or cause a crash if the optimizer rejects duplicate lr.\"}]}",
+ "input_sha256": {
+  "g2": "60704a3401f0743662b9d52a0233c62720634443ab8605a390d6f1d7e83181c5",
+  "scope": "4967ffc204fe02e30664511473dbfb072989423fdf6ef4a738bbacbd41714a69",
+  "meta": "5e1a998c19fbbe3b6e3bd9357c578eed64c5a4102ca99a68be71cb1f294e1d67",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py unsloth-11470"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 1843,
+   "tokens_out": 378,
+   "latency_ms": 4953,
+   "response_sha256": "0b369c94d139ce89d45ec5ed45c82c24036140d7c8d1d5d063d2f0154b86b222"
+  }
+ ],
+ "timestamp": "2026-09-27T03:00:37.028956+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

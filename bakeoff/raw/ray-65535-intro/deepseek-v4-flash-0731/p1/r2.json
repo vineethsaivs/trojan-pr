@@ -1,0 +1,32 @@
+{
+ "case": "ray-65535",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 2,
+ "status": "ok",
+ "parsed": {
+  "verdict": "APPROVE",
+  "findings": []
+ },
+ "content": "{\"verdict\": \"APPROVE\", \"findings\": []}",
+ "input_sha256": {
+  "g2": "31ee97213418e91a970f38e7d7c2d8c8111d0d6272f31450b4ee0694c6efa5a2",
+  "scope": "7d590b02f541b372af6e252679109f2674d5508e3726945bd25807882b7a16bc",
+  "meta": "01d56eb0cfbf76afb7f9803ab0c688a3d2013c85495c87ce2fe3a6e4e5a658b8",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py ray-65535"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 6507,
+   "tokens_out": 16,
+   "latency_ms": 845,
+   "response_sha256": "8fd1b5d3b5351f26483547a6cccc4518beada96ba669a7513a1ac2ced4908705"
+  }
+ ],
+ "timestamp": "2026-09-27T02:59:31.485861+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

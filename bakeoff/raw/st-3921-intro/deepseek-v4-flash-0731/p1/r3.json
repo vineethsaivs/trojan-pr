@@ -1,0 +1,53 @@
+{
+ "case": "st-3921",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 3,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py",
+    "function": "compute_gor",
+    "line_start": 184,
+    "line_end": 186,
+    "severity": "medium",
+    "mechanism": "When batch_size is 1, num_off_diagonal becomes zero (1*0=0), causing division by zero. The fill_diagonal_ also zeros the single diagonal element, so both mean_term and second_moment are computed as 0/0 = NaN. This produces NaN losses rather than a gradient of zero, silently corrupting training when any column has a batch of size 1.",
+    "trigger": "A batch containing a single sentence in any input column, e.g., a dataset with one row or a batch sampler that yields a batch of 1.",
+    "consequence": "The loss outputs NaN tensors, which propagate NaN gradients to the model parameters, corrupting training and producing invalid model weights."
+   },
+   {
+    "file": "sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py",
+    "function": "__init__",
+    "line_start": 66,
+    "line_end": 69,
+    "severity": "low",
+    "mechanism": "The condition `if not mean_weight and not second_moment_weight` treats any falsy value (0.0, None, False) as disabled, but also treats negative weights or other falsy values as valid. More critically, if a user sets mean_weight=0.0 and second_moment_weight=1.0, this is allowed, but the mean_weight=0.0 is treated as falsy and correctly skipped. However, if a user sets a weight to a negative value, it passes the check but the loss terms become negative, which may be intended. The main defect is that the check doesn't reject cases where both weights are falsy but not zero, e.g., mean_weight=None and second_moment_weight=None, but that's not a numerical bug per se. The more relevant issue is that the check doesn't distinguish between 'disabled' (None/0) and 'enabled' values; it allows e.g. mean_weight=False (falsy) which would silently skip the term, but that's consistent with docs. No numerical defect beyond the batch-size-1 case.",
+    "trigger": "Setting both weights to None or 0.0, which triggers the ValueError as intended. Setting one to a non-zero and one to None or 0 works as documented. No trigger for a numerical error beyond batch-size-1.",
+    "consequence": "No additional defect beyond the batch-size-1 division by zero."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py\", \"function\": \"compute_gor\", \"line_start\": 184, \"line_end\": 186, \"severity\": \"medium\", \"mechanism\": \"When batch_size is 1, num_off_diagonal becomes zero (1*0=0), causing division by zero. The fill_diagonal_ also zeros the single diagonal element, so both mean_term and second_moment are computed as 0/0 = NaN. This produces NaN losses rather than a gradient of zero, silently corrupting training when any column has a batch of size 1.\", \"trigger\": \"A batch containing a single sentence in any input column, e.g., a dataset with one row or a batch sampler that yields a batch of 1.\", \"consequence\": \"The loss outputs NaN tensors, which propagate NaN gradients to the model parameters, corrupting training and producing invalid model weights.\"}, {\"file\": \"sentence_transformers/losses/GlobalOrthogonalRegularizationLoss.py\", \"function\": \"__init__\", \"line_start\": 66, \"line_end\": 69, \"severity\": \"low\", \"mechanism\": \"The condition `if not mean_weight and not second_moment_weight` treats any falsy value (0.0, None, False) as disabled, but also treats negative weights or other falsy values as valid. More critically, if a user sets mean_weight=0.0 and second_moment_weight=1.0, this is allowed, but the mean_weight=0.0 is treated as falsy and correctly skipped. However, if a user sets a weight to a negative value, it passes the check but the loss terms become negative, which may be intended. The main defect is that the check doesn't reject cases where both weights are falsy but not zero, e.g., mean_weight=None and second_moment_weight=None, but that's not a numerical bug per se. The more relevant issue is that the check doesn't distinguish between 'disabled' (None/0) and 'enabled' values; it allows e.g. mean_weight=False (falsy) which would silently skip the term, but that's consistent with docs. No numerical defect beyond the batch-size-1 case.\", \"trigger\": \"Setting both weights to None or 0.0, which triggers the ValueError as intended. Setting one to a non-zero and one to None or 0 works as documented. No trigger for a numerical error beyond batch-size-1.\", \"consequence\": \"No additional defect beyond the batch-size-1 division by zero.\"}]}",
+ "input_sha256": {
+  "g2": "5e82813aaa08f13e14328a4dc03226e1b6cd77a423d03092b0243a0e5b45efde",
+  "scope": "c4cd079ea476642f8e0797e9f932bc55092e5c614485e8994ff0d420c40f5fb7",
+  "meta": "7cfcba5e603872133336b53f2f08ab3ceccee7547d5738fac13eaa346994e03f",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py st-3921"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 6187,
+   "tokens_out": 570,
+   "latency_ms": 7761,
+   "response_sha256": "ef5dc730ee644765d456cb42c6810279991855e9cbf8c65cea364def2474c44a"
+  }
+ ],
+ "timestamp": "2026-09-27T03:00:10.187278+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

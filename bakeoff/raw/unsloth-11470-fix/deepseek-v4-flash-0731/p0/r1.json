@@ -1,0 +1,38 @@
+{
+ "case": "unsloth-11470",
+ "which": "fix",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p0",
+ "run": 1,
+ "status": "ok",
+ "parsed": {
+  "file": "unsloth/trainer.py",
+  "function": "_install_legacy_scheduler_resume",
+  "line_start": 658,
+  "line_end": 705,
+  "severity": "high",
+  "mechanism": "The function mutates scheduler.__class__ to a dynamically-created subclass that captures a closure over `built` (the optimizer object). This closure is stored in the class attribute `_unsloth_legacy_resume`, and the comment says it is set on the class not the instance to avoid pickling issues. However, the closure references `built`, which is a live optimizer instance that may not be picklable (e.g., contains GPU tensors or non-picklable attributes). When a checkpoint is saved, the scheduler's state_dict includes the class attribute `_unsloth_legacy_resume` which holds this closure, and torch.save will attempt to pickle it, causing a pickle error on the first save, even when no resume is performed.",
+  "trigger": "Any call to `create_scheduler` with an optimizer built by `_create_unsloth_optimizer` (i.e., when `embedding_learning_rate` is set), followed by a `trainer.save_model()` or checkpoint save that serializes the scheduler state.",
+  "consequence": "The first checkpoint save fails with a pickle.PicklingError/TypeError, breaking training and resume, contradicting the stated goal of preserving scheduler state across checkpoints. The fix defeats its purpose and introduces a regression."
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"unsloth/trainer.py\", \"function\": \"_install_legacy_scheduler_resume\", \"line_start\": 658, \"line_end\": 705, \"severity\": \"high\", \"mechanism\": \"The function mutates scheduler.__class__ to a dynamically-created subclass that captures a closure over `built` (the optimizer object). This closure is stored in the class attribute `_unsloth_legacy_resume`, and the comment says it is set on the class not the instance to avoid pickling issues. However, the closure references `built`, which is a live optimizer instance that may not be picklable (e.g., contains GPU tensors or non-picklable attributes). When a checkpoint is saved, the scheduler's state_dict includes the class attribute `_unsloth_legacy_resume` which holds this closure, and torch.save will attempt to pickle it, causing a pickle error on the first save, even when no resume is performed.\", \"trigger\": \"Any call to `create_scheduler` with an optimizer built by `_create_unsloth_optimizer` (i.e., when `embedding_learning_rate` is set), followed by a `trainer.save_model()` or checkpoint save that serializes the scheduler state.\", \"consequence\": \"The first checkpoint save fails with a pickle.PicklingError/TypeError, breaking training and resume, contradicting the stated goal of preserving scheduler state across checkpoints. The fix defeats its purpose and introduces a regression.\"}, {\"file\": \"unsloth/trainer.py\", \"function\": \"_install_legacy_scheduler_resume\", \"line_start\": 658, \"line_end\": 705, \"severity\": \"medium\", \"mechanism\": \"Even if pickling were avoided, the dynamic class creation changes the scheduler's type. The state_dict mapping in `load_state_dict` only remaps keys when `len(saved) == 2`, which is exactly the legacy layout. But if the optimizer has a different number of groups (e.g., a model with no decay params produces 0 groups, or a schedule-free optimizer creates a different number), the remap silently no-ops. The comment claims 'exact, not inferred', but the gate on length 2 only matches one specific legacy case. For any other group count, `_unsloth_loaded_legacy` might be False, and the scheduler's `base_lrs` will be overwritten without remapping, leading to a `zip(..., strict=True)` error on the next step. This is an unhandled failure mode that could occur for models where the legacy layout doesn't match (e.g., a model that does train biases/norms, producing 4 groups in the new code but 2 in the old).\", \"trigger\": \"A resume where the optimizer has a group count that is not exactly 2 (e.g., a model that trains biases/norms, producing 4 groups, or a model with no params in some group), while the saved checkpoint has 2 groups. The remap condition `len(saved) == 2` fails to match, and the scheduler hook gates on `_unsloth_loaded_legacy` which may be False, so no remap occurs.\", \"consequence\": \"The scheduler state is not remapped, causing a mismatch in `base_lrs` lengths and a `zip(..., strict=True)` error, crashing resume. The code claims to handle all legacy checkpoints but only handles the exact 2-group case, leaving a broken resume for other common configurations.\"}, {\"file\": \"unsloth/trainer.py\", \"function\": \"_create_unsloth_optimizer\", \"line_start\": 477, \"line_end\": 569, \"severity\": \"low\", \"mechanism\": \"The new default `decay_parameter_names` includes all parameters, but the comment says 'the default here decays all' while the actual split in the loops only applies decay to params where `name in decay_parameter_names is decays`. When `decay_parameter_names` is None, it's set to all names, so the first loop (decays=True) includes all params, and the second loop (decays=False) is empty. This is correct. However, the parameter `weight_decay` is passed from `self.args.weight_decay` but `optimizer_kwargs` may still contain a `weight_decay` key for schedule-free or stable_adamw; in that case, `optimizer_kwargs.get(\"weight_decay\", weight_decay)` uses the kwargs value, which is correct. But if `optimizer_kwargs` does not contain it, the `weight_decay` from the config is used, which is the intended fix. No defect here. The issue is that the function is called with `decay_parameter_names = self.get_decay_parameter_names(target_model)`, and `target_model` may be `self.model` or the passed model. In the delayed path (model is not None), `target_model` is the prepared model under FSDP, and `get_decay_parameter_names` might return a set of names that don't match the parameters in `param_groups` (since FSDP flattens names), leading to an empty decay group and the embedding group being empty, raising the ValueError as documented. This is existing behaviour and not introduced by this change.\", \"trigger\": \"When `embedding_learning_rate` is set and `model` is passed as a string or a model under FSDP, `get_decay_parameter_names` may return names that don't align with the `param_groups` keys, causing an empty group and the existing ValueError. This is pre-existing and not a regression.\", \"consequence\": \"No new defect; the behaviour is documented and unchanged.\"}]}",
+ "input_sha256": {
+  "g2": "962b78b0bd23f34570cb79f870b40e0e3b3e16b935a0c780a0a8f04f5bb49add",
+  "scope": "8a45b12c7829a79ecac45008cbf22f1c13f89e84df5aec0db2727b3d3029fa11",
+  "meta": "de5c8ee79b153a267bef3a54d7685d08c36b88e7cd777b64284ea4fda9679f24",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py unsloth-11470"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 18957,
+   "tokens_out": 1246,
+   "latency_ms": 25315,
+   "response_sha256": "d2c606d066edccc6ae0793cba505a6560a36bdbc9072e5cfaafe9e65b8d82907"
+  }
+ ],
+ "timestamp": "2026-09-27T02:59:22.190786+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

@@ -1,0 +1,65 @@
+{
+ "case": "ds-8533",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 2,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "deepspeed/runtime/zero/muon/original_muon.py",
+    "function": "zeropower_via_gram_newtonschulz",
+    "line_start": 66,
+    "line_end": 144,
+    "severity": "high",
+    "mechanism": ""
+   },
+   {
+    "file": "deepspeed/runtime/zero/muon/original_muon.py",
+    "function": "muon_update",
+    "line_start": 156,
+    "line_end": 164,
+    "severity": "high",
+    "mechanism": ""
+   },
+   {
+    "file": "deepspeed/runtime/zero/muon/original_muon.py",
+    "function": "zeropower_via_newtonschulz5",
+    "line_start": 40,
+    "line_end": 62,
+    "severity": "low",
+    "mechanism": ""
+   },
+   {
+    "file": "deepspeed/runtime/zero/muon/original_muon.py",
+    "function": "zeropower_via_gram_newtonschulz",
+    "line_start": 66,
+    "line_end": 144,
+    "severity": "low",
+    "mechanism": ""
+   }
+  ]
+ },
+ "content": "{\"verdict\":\"REQUEST_CHANGES\",\"findings\":[{\"file\":\"deepspeed/runtime/zero/muon/original_muon.py\",\"function\":\"zeropower_via_gram_newtonschulz\",\"line_start\":66,\"line_end\":144,\"severity\":\"high\",\"mechanism\":\"The Gram NS implementation incorrectly handles the transposed case (G.size(-2) > G.size(-1)). The code sets X = X.mT and then computes R = X @ X.mT. When the original G is transposed (m > n), X becomes n x m with n < m. The code correctly enters the rectangular branch (m > n) and computes R = X @ X.mT which is n x n. However, the final output is computed as X = X.mT @ Q.mT. Here X.mT is m x n, Q is n x n, so X.mT @ Q.mT is m x n. But this result has shape m x n, whereas the expected output should have shape n x m (i.e., the transposed back). The code attempts to transpose back, but the multiplication order is wrong: it should be Q @ X.mT to yield n x m, or equivalently X.mT @ Q.mT only if X.mT were m x n and Q were m x m. In the rectangular branch, Q is n x n (since R is n x n). The correct formula is Q @ X.mT (n x n @ m x n = n x m). The current code produces X.mT @ Q.mT which is m x n, a shape mismatch and numerically wrong. This will cause shape errors or silently wrong updates for any parameter with more rows than columns (common for transformer weight matrices). Trigger: any call to muon_update with a 2D grad where grad.size(-2) > grad.size(-1) and ns_method=\\\"gram\\\". Consequence: wrong orthogonalization result, leading to incorrect parameter updates and likely training divergence or runtime shape error.\",\"mechanism\":\"\", \"line_end\":144,\"severity\":\"high\"},{\"file\":\"deepspeed/runtime/zero/muon/original_muon.py\",\"function\":\"muon_update\",\"line_start\":156,\"line_end\":164,\"severity\":\"high\",\"mechanism\":\"The line 'update *= max(1, grad.size(-2) / grad.size(-1))**0.5' uses the original grad's shape, but after the Gram NS call the update may have a different shape (if the transposed branch is used) and this scaling factor is wrong. More critically, the Gram NS function already transposes back internally but with the wrong formula, so this scaling is applied to a wrong-shaped tensor. This compounds the error. Trigger: same as above. Consequence: wrong scaling and further wrong result.\",\"mechanism\":\"\", \"line_end\":164,\"severity\":\"high\"},{\"file\":\"deepspeed/runtime/zero/muon/original_muon.py\",\"function\":\"zeropower_via_newtonschulz5\",\"line_start\":40,\"line_end\":62,\"severity\":\"low\",\"mechanism\":\"The change to use bf16/fp32 based on hardware support is a good change, but the function still scales by X.norm + 1e-7; if the norm is exactly zero, the denominator is 1e-7, not zero, so safe. However, the original code used X.norm + 1e-7 as well, no new defect.\",\"mechanism\":\"\", \"line_end\":62,\"severity\":\"low\"},{\"file\":\"deepspeed/runtime/zero/muon/original_muon.py\",\"function\":\"zeropower_via_gram_newtonschulz\",\"line_start\":66,\"line_end\":144,\"severity\":\"medium\",\"mechanism\":\"The Gram NS implementation uses fp16 compute, which is less precise than bf16 for some hardware, but the PR claims fp16 is better. However, the main issue is the transposed branch error. Also, the fallback for m <= n uses the standard iteration but the scaling X = X / (norm + 1e-7) is applied before checking the branch, and the standard iteration is applied on the transposed X. For m <= n, X is already transposed if G.size(-2) > G.size(-1), so the standard iteration is applied on the transposed matrix, which is correct (since it transposes back at the end). No new defect there, but the fallback is fine.\",\"mechanism\":\"\", \"line_end\":144,\"severity\":\"low\"}]}",
+ "input_sha256": {
+  "g2": "4dca373a28a85309954058814f9a38335582c51f6fbdf7b0ba4ad26dcda844d6",
+  "scope": "d096a354c89b2c8bab05e028117be638660528e2b3c1a5fedbfa1857bfdda305",
+  "meta": "deb71c702c1ea16db65811b98c0c579f217724b3243b8197d901598732766bac",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py ds-8533"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 8722,
+   "tokens_out": 980,
+   "latency_ms": 13902,
+   "response_sha256": "11e753823005b857e2ffa06c10b93b570f79bc26667e17ec528078d7da65a57f"
+  }
+ ],
+ "timestamp": "2026-09-27T02:59:29.449138+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

@@ -1,0 +1,32 @@
+{
+ "case": "unsloth-11470",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p0",
+ "run": 1,
+ "status": "ok",
+ "parsed": {
+  "verdict": "APPROVE",
+  "findings": []
+ },
+ "content": "{\"verdict\": \"APPROVE\", \"findings\": []}",
+ "input_sha256": {
+  "g2": "60704a3401f0743662b9d52a0233c62720634443ab8605a390d6f1d7e83181c5",
+  "scope": "4967ffc204fe02e30664511473dbfb072989423fdf6ef4a738bbacbd41714a69",
+  "meta": "5e1a998c19fbbe3b6e3bd9357c578eed64c5a4102ca99a68be71cb1f294e1d67",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py unsloth-11470"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 1843,
+   "tokens_out": 16,
+   "latency_ms": 5098,
+   "response_sha256": "ae7b088bbccc63ec4b3769c969c47a655cbcec4c6cc9872204f352bd1efcee61"
+  }
+ ],
+ "timestamp": "2026-09-27T02:58:17.051747+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

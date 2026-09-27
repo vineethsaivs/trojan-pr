@@ -1,0 +1,43 @@
+{
+ "case": "ds-8334",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p0",
+ "run": 2,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "deepspeed/runtime/data_pipeline/curriculum_scheduler.py",
+    "function": "__fixed_root_update_difficulty",
+    "line_start": 100,
+    "line_end": 115,
+    "severity": "high",
+    "mechanism": "Unbounded access to 'schedule_config' in config and 'root_degree' key without validation, but more critically, the code does not validate that 'total_curriculum_step' is positive or that 'min_difficulty' <= 'max_difficulty'. Also, if 'difficulty_step' is 0 (not checked), a modulo by zero occurs. In the provided fixed_discrete schedule, if a user sets difficulty values that skip past max_difficulty (e.g., difficulty [1, 2, 5], max_difficulty 3), the update_difficulty early exit is bypassed and the scheduler sets current_difficulty to 5, exceeding max_difficulty. This can cause training to use data outside the intended difficulty range.",
+    "trigger": "A user provides a config with 'difficulty_step' = 0, or a fixed_discrete schedule whose difficulty sequence jumps beyond max_difficulty, or non-monotonic total_curriculum_step (negative or zero) causing incorrect progression or division by zero.",
+    "consequence": "The scheduler may set current_difficulty to values outside the intended [min_difficulty, max_difficulty] range, causing training to use inappropriate data difficulty, or crash with a ZeroDivisionError if difficulty_step is zero. This leads to incorrect training behavior and potential runtime failure."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\",\n \"findings\": [\n   {\n     \"file\": \"deepspeed/runtime/data_pipeline/curriculum_scheduler.py\",\n     \"function\": \"__fixed_root_update_difficulty\",\n     \"line_start\": 100,\n     \"line_end\": 115,\n     \"severity\": \"high\",\n     \"mechanism\": \"Unbounded access to 'schedule_config' in config and 'root_degree' key without validation, but more critically, the code does not validate that 'total_curriculum_step' is positive or that 'min_difficulty' <= 'max_difficulty'. Also, if 'difficulty_step' is 0 (not checked), a modulo by zero occurs. In the provided fixed_discrete schedule, if a user sets difficulty values that skip past max_difficulty (e.g., difficulty [1, 2, 5], max_difficulty 3), the update_difficulty early exit is bypassed and the scheduler sets current_difficulty to 5, exceeding max_difficulty. This can cause training to use data outside the intended difficulty range.\",\n     \"trigger\": \"A user provides a config with 'difficulty_step' = 0, or a fixed_discrete schedule whose difficulty sequence jumps beyond max_difficulty, or non-monotonic total_curriculum_step (negative or zero) causing incorrect progression or division by zero.\",\n     \"consequence\": \"The scheduler may set current_difficulty to values outside the intended [min_difficulty, max_difficulty] range, causing training to use inappropriate data difficulty, or crash with a ZeroDivisionError if difficulty_step is zero. This leads to incorrect training behavior and potential runtime failure.\"\n   }\n ]\n}",
+ "input_sha256": {
+  "g2": "7d8f8337cab6c0f60b05acafc2896206d6785d217ab528ffe449750a280ac793",
+  "scope": "0aaa38d73d6c7c0c07114bba97f1878a578c89d42e6b87bbeee18840fee18874",
+  "meta": "cfd774011be1b3286a6b0b577e12c8d7ff84a442ad5e5d35dd69b2a826758636",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py ds-8334"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 3699,
+   "tokens_out": 367,
+   "latency_ms": 7549,
+   "response_sha256": "797abc04e273a4c95969fcddc7e028729863a76309d04aba75ccb021f5445610"
+  }
+ ],
+ "timestamp": "2026-09-27T02:59:29.740462+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

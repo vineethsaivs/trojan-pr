@@ -1,0 +1,43 @@
+{
+ "case": "unsloth-11337",
+ "which": "fix",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p0",
+ "run": 3,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "unsloth/models/rl_replacements.py",
+    "function": "_unsloth_grpo_accumulation_steps",
+    "line_start": 923,
+    "line_end": 936,
+    "severity": "high",
+    "mechanism": "The helper reads `model.training` and returns 1 when the model is not training, but the GRPO `compute_loss` is called from TRL's eval loop with `model.training` possibly True (the model is in training mode during an in-training evaluation) and the attribute `current_gradient_accumulation_steps` is stale from the training loop. The helper still uses the stale divisor in that case, reproducing the exact bug the PR claims to fix. The PR's assumption that TRL's eval loop always sets `model.training` False is wrong; TRL's `evaluation_loop` calls `compute_loss` without toggling model.training, and the Trainer does not clear the attribute after training. Thus the eval loss remains divided by the stale accumulation steps.",
+    "trigger": "A GRPO run with an in-training evaluation (`self.control.should_evaluate` True) where the model has been left in training mode; the helper sees `model.training=True` and uses the stale `current_gradient_accumulation_steps` from the training loop.",
+    "consequence": "eval_loss is underreported by the stale accumulation steps, defeating the purpose of the change and producing incorrect metrics. This affects any in-training evaluation, not just standalone evaluate() which is a different code path and already handled by the getattr default."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"unsloth/models/rl_replacements.py\", \"function\": \"_unsloth_grpo_accumulation_steps\", \"line_start\": 923, \"line_end\": 936, \"severity\": \"high\", \"mechanism\": \"The helper reads `model.training` and returns 1 when the model is not training, but the GRPO `compute_loss` is called from TRL's eval loop with `model.training` possibly True (the model is in training mode during an in-training evaluation) and the attribute `current_gradient_accumulation_steps` is stale from the training loop. The helper still uses the stale divisor in that case, reproducing the exact bug the PR claims to fix. The PR's assumption that TRL's eval loop always sets `model.training` False is wrong; TRL's `evaluation_loop` calls `compute_loss` without toggling model.training, and the Trainer does not clear the attribute after training. Thus the eval loss remains divided by the stale accumulation steps.\", \"trigger\": \"A GRPO run with an in-training evaluation (`self.control.should_evaluate` True) where the model has been left in training mode; the helper sees `model.training=True` and uses the stale `current_gradient_accumulation_steps` from the training loop.\", \"consequence\": \"eval_loss is underreported by the stale accumulation steps, defeating the purpose of the change and producing incorrect metrics. This affects any in-training evaluation, not just standalone evaluate() which is a different code path and already handled by the getattr default.\"}]}",
+ "input_sha256": {
+  "g2": "f3551d07b0293b911bef811e77da47be6e7e9b816747dbde57d7749ef5bf16ed",
+  "scope": "35a46b88b344ce83a546d3359d2f53726bd3ee63927d5425159e35bf561b2fb6",
+  "meta": "048856f9d2ea27ec223905af71850f5beadd70d91f11a829ab4c94b894c2a8e4",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py unsloth-11337"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 46552,
+   "tokens_out": 354,
+   "latency_ms": 5051,
+   "response_sha256": "0210ee1d4166e9289f731f4296aa2d9dc867aec3109bdf1771c59e1c548e717b"
+  }
+ ],
+ "timestamp": "2026-09-27T03:00:58.984117+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

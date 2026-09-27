@@ -1,0 +1,43 @@
+{
+ "case": "unsloth-11470",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 2,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "unsloth/trainer.py",
+    "function": "_create_unsloth_optimizer",
+    "line_start": 46,
+    "line_end": 61,
+    "severity": "high",
+    "mechanism": "Passing both optimizer_grouped_parameters and **optimizer_kwargs to the optimizer constructor. optimizer_kwargs still contains 'lr', 'weight_decay' (and possibly other kwargs like 'betas', 'eps', etc.) that are not in the parameter groups. For many optimizer classes, passing duplicate 'lr' and 'weight_decay' will raise a TypeError or override the per-group settings, causing the embedding learning rate to be ignored or training to crash. In particular, if optimizer_kwargs contains 'weight_decay' and the per-group already sets it, some optimizers (e.g. torch.optim.AdamW) will reject duplicate keyword arguments.",
+    "trigger": "When embedding_learning_rate is set and optimizer_kwargs contains 'lr' and 'weight_decay' (as it typically does), the call optimizer_cls(optimizer_grouped_parameters, **optimizer_kwargs) passes both group-level lr/weight_decay and top-level kwargs. This can cause a TypeError for torch.optim.AdamW and many other optimizers, or for optimizers that allow duplicates, the top-level kwargs may override the per-group lr, making the embedding_learning_rate ineffective.",
+    "consequence": "Training crashes with a TypeError or silently ignores the intended per-group learning rate, leading to wrong optimization behavior (e.g., embeddings trained at the wrong lr)."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"unsloth/trainer.py\", \"function\": \"_create_unsloth_optimizer\", \"line_start\": 46, \"line_end\": 61, \"severity\": \"high\", \"mechanism\": \"Passing both optimizer_grouped_parameters and **optimizer_kwargs to the optimizer constructor. optimizer_kwargs still contains 'lr', 'weight_decay' (and possibly other kwargs like 'betas', 'eps', etc.) that are not in the parameter groups. For many optimizer classes, passing duplicate 'lr' and 'weight_decay' will raise a TypeError or override the per-group settings, causing the embedding learning rate to be ignored or training to crash. In particular, if optimizer_kwargs contains 'weight_decay' and the per-group already sets it, some optimizers (e.g. torch.optim.AdamW) will reject duplicate keyword arguments.\", \"trigger\": \"When embedding_learning_rate is set and optimizer_kwargs contains 'lr' and 'weight_decay' (as it typically does), the call optimizer_cls(optimizer_grouped_parameters, **optimizer_kwargs) passes both group-level lr/weight_decay and top-level kwargs. This can cause a TypeError for torch.optim.AdamW and many other optimizers, or for optimizers that allow duplicates, the top-level kwargs may override the per-group lr, making the embedding_learning_rate ineffective.\", \"consequence\": \"Training crashes with a TypeError or silently ignores the intended per-group learning rate, leading to wrong optimization behavior (e.g., embeddings trained at the wrong lr).\"}]}",
+ "input_sha256": {
+  "g2": "60704a3401f0743662b9d52a0233c62720634443ab8605a390d6f1d7e83181c5",
+  "scope": "4967ffc204fe02e30664511473dbfb072989423fdf6ef4a738bbacbd41714a69",
+  "meta": "5e1a998c19fbbe3b6e3bd9357c578eed64c5a4102ca99a68be71cb1f294e1d67",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py unsloth-11470"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 2102,
+   "tokens_out": 358,
+   "latency_ms": 4813,
+   "response_sha256": "a87598328e937b3ca2f292ca16985b46e11834a66eb9a7b48ebd23a8073407cf"
+  }
+ ],
+ "timestamp": "2026-09-27T02:59:39.973888+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

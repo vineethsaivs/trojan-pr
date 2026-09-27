@@ -1,0 +1,55 @@
+{
+ "case": "st-4019",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 1,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py",
+    "function": "batch_hard_triplet_soft_margin_loss",
+    "line_start": 59,
+    "line_end": 59,
+    "severity": "high",
+    "mechanism": "Overflow in log1p(exp(x)) when x is large positive finite. The expression `hardest_positive_dist - hardest_negative_dist` can be large positive, and `torch.exp` overflows to inf for inputs > ~88 in fp32, leading `log1p(inf)` to return inf, making the loss inf. The standard safe formulation is `torch.nn.functional.softplus(hardest_positive_dist - hardest_negative_dist)` or `torch.log(1 + exp(x))` with log-sum-exp handling, but here `exp` is used directly. Trigger: any batch where the hardest positive distance exceeds the hardest negative distance by a large margin (e.g., well-separated embeddings), which is common during training. Consequence: triplet loss becomes inf and training diverges or produces NaN gradients.",
+    "mechanism_detail": "Denominator/power pattern not directly, but overflow pattern #3: `torch.exp` overflows on large finite inputs, and `log1p(inf)` = inf, so the loss returns inf.",
+    "trigger": "A batch with a triplet where hardest positive distance is much larger than hardest negative distance, e.g., after a few steps of training when embeddings become well-separated.",
+    "consequence": "The triplet loss becomes inf, leading to inf loss and broken training."
+   },
+   {
+    "file": "sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py",
+    "function": "batch_hard_triplet_soft_margin_loss",
+    "line_start": 42,
+    "line_end": 42,
+    "severity": "high",
+    "mechanism": "Uses `reps[0]` instead of the tensor corresponding to the labels. In `forward`, `reps` is a list of embeddings for each `sentence_feature` entry, but the loss is computed with `reps[0]` regardless of which feature corresponds to `labels`. If the input `sentence_features` has more than one element (e.g., a list with a single dictionary, which is typical in sentence-transformers, but if the list has more than one, the labels belong to one of them), using `reps[0]` may compute distances on the wrong embeddings. However, in sentence-transformers, `sentence_features` is typically a list with a single dict, so `reps[0]` is correct. But the code also uses `reps[0]` in the static method call, and the `forward` returns `reps[0]` directly without taking the `max` or mean over multiple features. For the standard use case, this is fine, but the defect is that the function signature `forward` accepts `sentence_features` as `Iterable`, and if more than one feature is passed, it uses only the first, ignoring the rest. This is a potential axis/order bug, but in practice the typical usage is a single-element list. Still, it's a silent wrong-result if a user passes multiple features. Trigger: `sentence_features` has more than one element, e.g., a list of two dicts, while `labels` correspond to the second feature. Consequence: loss computed on wrong embeddings, incorrect training.",
+    "mechanism_detail": "Pattern #7: shape/axis read from index 0 instead of the correct feature index. The `forward` uses `reps[0]` unconditionally.",
+    "trigger": "A user passes `sentence_features` as a list with more than one dictionary, and the `labels` correspond to a different element than index 0.",
+    "consequence": "The loss is computed on the wrong embeddings, leading to wrong gradient and incorrect model training."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py\", \"function\": \"batch_hard_triplet_soft_margin_loss\", \"line_start\": 59, \"line_end\": 59, \"severity\": \"high\", \"mechanism\": \"Overflow in log1p(exp(x)) when x is large positive finite. The expression `hardest_positive_dist - hardest_negative_dist` can be large positive, and `torch.exp` overflows to inf for inputs > ~88 in fp32, leading `log1p(inf)` to return inf, making the loss inf. The standard safe formulation is `torch.nn.functional.softplus(hardest_positive_dist - hardest_negative_dist)` or `torch.log(1 + exp(x))` with log-sum-exp handling, but here `exp` is used directly. Trigger: any batch where the hardest positive distance exceeds the hardest negative distance by a large margin (e.g., well-separated embeddings), which is common during training. Consequence: triplet loss becomes inf and training diverges or produces NaN gradients.\", \"mechanism_detail\": \"Denominator/power pattern not directly, but overflow pattern #3: `torch.exp` overflows on large finite inputs, and `log1p(inf)` = inf, so the loss returns inf.\", \"trigger\": \"A batch with a triplet where hardest positive distance is much larger than hardest negative distance, e.g., after a few steps of training when embeddings become well-separated.\", \"consequence\": \"The triplet loss becomes inf, leading to inf loss and broken training.\"}, {\"file\": \"sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py\", \"function\": \"batch_hard_triplet_soft_margin_loss\", \"line_start\": 42, \"line_end\": 42, \"severity\": \"high\", \"mechanism\": \"Uses `reps[0]` instead of the tensor corresponding to the labels. In `forward`, `reps` is a list of embeddings for each `sentence_feature` entry, but the loss is computed with `reps[0]` regardless of which feature corresponds to `labels`. If the input `sentence_features` has more than one element (e.g., a list with a single dictionary, which is typical in sentence-transformers, but if the list has more than one, the labels belong to one of them), using `reps[0]` may compute distances on the wrong embeddings. However, in sentence-transformers, `sentence_features` is typically a list with a single dict, so `reps[0]` is correct. But the code also uses `reps[0]` in the static method call, and the `forward` returns `reps[0]` directly without taking the `max` or mean over multiple features. For the standard use case, this is fine, but the defect is that the function signature `forward` accepts `sentence_features` as `Iterable`, and if more than one feature is passed, it uses only the first, ignoring the rest. This is a potential axis/order bug, but in practice the typical usage is a single-element list. Still, it's a silent wrong-result if a user passes multiple features. Trigger: `sentence_features` has more than one element, e.g., a list of two dicts, while `labels` correspond to the second feature. Consequence: loss computed on wrong embeddings, incorrect training.\", \"mechanism_detail\": \"Pattern #7: shape/axis read from index 0 instead of the correct feature index. The `forward` uses `reps[0]` unconditionally.\", \"trigger\": \"A user passes `sentence_features` as a list with more than one dictionary, and the `labels` correspond to a different element than index 0.\", \"consequence\": \"The loss is computed on the wrong embeddings, leading to wrong gradient and incorrect model training.\"}]}",
+ "input_sha256": {
+  "g2": "46ae6743a0c18e6962b6387847f169b2e253f7525987b496e3bb286223a55579",
+  "scope": "8522b61bf7f55f1738c34fdfc7f125f5a1eeff0c3156d27d2150f4f005199dde",
+  "meta": "9ffe77adb89274581e441d98ec04ad55ac5ca39228d923fe5008992127c19aef",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py st-4019"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 2395,
+   "tokens_out": 862,
+   "latency_ms": 17625,
+   "response_sha256": "c5a61069eec057774253ae8be89f0e78fb5c5f50d5c020d2f31cc11aebaff86e"
+  }
+ ],
+ "timestamp": "2026-09-27T02:58:09.833024+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

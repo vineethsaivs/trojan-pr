@@ -1,0 +1,83 @@
+{
+ "case": "unsloth-11337",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 1,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "unsloth/models/rl_replacements.py",
+    "function": "grpo_trainer__generate_and_score_completions",
+    "line_start": 230,
+    "line_end": 247,
+    "severity": "high",
+    "mechanism": "The replacement unconditionally converts self.model to FastModel or FastVisionModel inside _generate_and_score_completions. This mutates the model object during inference/generation, and the model may already be wrapped or unwrapped, leading to dtype/precision loss and incorrect hidden-state computation. The original code did not do this conversion, so this is a new wrong-result path.",
+    "trigger": "Any call to _generate_and_score_completions (train or eval) after model has been loaded, especially when the model is not a vision model but model_type is in the fast_language_model_types list or when pixel_values is present. The model is re-converted and could be changed to a different object, causing loss of trained weights or adapter state.",
+    "consequence": "Wrong logits/log-probs and advantages are computed, corrupting training and evaluation metrics; can also crash if self.model is already unwrapped or if FastModel.for_training returns a different instance."
+   },
+   {
+    "file": "unsloth/models/rl_replacements.py",
+    "function": "grpo_trainer_compute_loss",
+    "line_start": 563,
+    "line_end": 645,
+    "severity": "high",
+    "mechanism": "The code reads num_items_in_batch from inputs via .get with default None, then passes it to grpo_compute_loss_slow/grpo_accumulated_loss. If the inputs dict does not contain 'num_items_in_batch', the downstream functions receive None. In the slow-loss branch, the code then uses this None in a division (e.g., dividing by num_items_in_batch in the importance-sampling-ratio computation) without checking for None, causing a ZeroDivisionError or NaN. The original TRL code expected num_items_in_batch to be passed from the trainer; this replacement loses that propagation.",
+    "trigger": "A GRPO training step where the trainer's compute_loss is called without num_items_in_batch in inputs (e.g., older TRL versions or when the dataloader does not add this key). In the slow branch, grpo_compute_loss_slow receives None and performs a division by num_items_in_batch.",
+    "consequence": "Runtime ZeroDivisionError or silent NaN in loss/ratio metrics, breaking training or yielding wrong numbers."
+   },
+   {
+    "file": "unsloth/models/rl_replacements.py",
+    "function": "grpo_trainer_compute_loss",
+    "line_start": 723,
+    "line_end": 757,
+    "severity": "medium",
+    "mechanism": "The code uses the undefined symbols nanmin, nanmax, and .nanmean() calls (torch.Tensor.nanmean, accelerator.gather(...).nanmean, etc.) inside the vLLM metrics block. These names are not imported nor defined in this file; the original TRL code used torch.nanmin/nanmax or similar functions. This is a new path that will raise NameError when executed.",
+    "trigger": "Any vLLM GRPO training step where self.use_vllm is True and delta is not None (i.e., all vLLM runs). The metrics block executes and references nanmin/nanmax which are undefined.",
+    "consequence": "NameError crash at the end of compute_loss, preventing the loss return and breaking the training loop."
+   },
+   {
+    "file": "unsloth/models/rl_replacements.py",
+    "function": "grpo_trainer_compute_loss",
+    "line_start": 712,
+    "line_end": 722,
+    "severity": "medium",
+    "mechanism": "The variable mode is only defined inside the if 'train' in self._metrics branch. If self._metrics does not contain the 'train' key (e.g., during evaluation-only or when the metrics structure is different), the else branch appends to self._metrics['completion_length'] and self._metrics['kl'], but then mode is never assigned. The vLLM metrics block then uses mode in the metric key f'sampling/...' which is undefined, causing a NameError. The original code did not have this vLLM block.",
+    "trigger": "A vLLM GRPO step where self._metrics does not have the 'train' key (e.g., during the first evaluation or if the metrics structure differs from the assumed one). Then mode is undefined in the vLLM block.",
+    "consequence": "NameError crash, or if mode is somehow stale, it writes to wrong metric keys."
+   },
+   {
+    "file": "unsloth/models/rl_replacements.py",
+    "function": "grpo_trainer__generate_and_score_completions",
+    "line_start": 253,
+    "line_end": 270,
+    "severity": "high",
+    "mechanism": "The regex pattern for all_logprobs is replaced with a version that iterates over all_outputs and outputs.outputs, but the original code likely iterated over a different variable (e.g., 'outputs' is a list of vLLM outputs). The replacement uses 'for outputs in all_outputs' and 'for output in outputs.outputs', but the variable all_outputs may not exist in the current TRL version, or the nesting is wrong (double loop). This is a new path that may use an undefined variable or misinterpret the structure.",
+    "trigger": "Any vLLM generation call where the regex matches the original all_logprobs list comprehension. The replacement introduces a double loop over all_outputs and outputs.outputs; if all_outputs is not defined or the structure differs, it will raise NameError or produce an empty/incomplete list.",
+    "consequence": "No logprobs are gathered, leading to empty advantages or crash, or wrong importance-sampling-ratio computation."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"unsloth/models/rl_replacements.py\", \"function\": \"grpo_trainer__generate_and_score_completions\", \"line_start\": 230, \"line_end\": 247, \"severity\": \"high\", \"mechanism\": \"The replacement unconditionally converts self.model to FastModel or FastVisionModel inside _generate_and_score_completions. This mutates the model object during inference/generation, and the model may already be wrapped or unwrapped, leading to dtype/precision loss and incorrect hidden-state computation. The original code did not do this conversion, so this is a new wrong-result path.\", \"trigger\": \"Any call to _generate_and_score_completions (train or eval) after model has been loaded, especially when the model is not a vision model but model_type is in the fast_language_model_types list or when pixel_values is present. The model is re-converted and could be changed to a different object, causing loss of trained weights or adapter state.\", \"consequence\": \"Wrong logits/log-probs and advantages are computed, corrupting training and evaluation metrics; can also crash if self.model is already unwrapped or if FastModel.for_training returns a different instance.\"}, {\"file\": \"unsloth/models/rl_replacements.py\", \"function\": \"grpo_trainer_compute_loss\", \"line_start\": 563, \"line_end\": 645, \"severity\": \"high\", \"mechanism\": \"The code reads num_items_in_batch from inputs via .get with default None, then passes it to grpo_compute_loss_slow/grpo_accumulated_loss. If the inputs dict does not contain 'num_items_in_batch', the downstream functions receive None. In the slow-loss branch, the code then uses this None in a division (e.g., dividing by num_items_in_batch in the importance-sampling-ratio computation) without checking for None, causing a ZeroDivisionError or NaN. The original TRL code expected num_items_in_batch to be passed from the trainer; this replacement loses that propagation.\", \"trigger\": \"A GRPO training step where the trainer's compute_loss is called without num_items_in_batch in inputs (e.g., older TRL versions or when the dataloader does not add this key). In the slow branch, grpo_compute_loss_slow receives None and performs a division by num_items_in_batch.\", \"consequence\": \"Runtime ZeroDivisionError or silent NaN in loss/ratio metrics, breaking training or yielding wrong numbers.\"}, {\"file\": \"unsloth/models/rl_replacements.py\", \"function\": \"grpo_trainer_compute_loss\", \"line_start\": 723, \"line_end\": 757, \"severity\": \"medium\", \"mechanism\": \"The code uses the undefined symbols nanmin, nanmax, and .nanmean() calls (torch.Tensor.nanmean, accelerator.gather(...).nanmean, etc.) inside the vLLM metrics block. These names are not imported nor defined in this file; the original TRL code used torch.nanmin/nanmax or similar functions. This is a new path that will raise NameError when executed.\", \"trigger\": \"Any vLLM GRPO training step where self.use_vllm is True and delta is not None (i.e., all vLLM runs). The metrics block executes and references nanmin/nanmax which are undefined.\", \"consequence\": \"NameError crash at the end of compute_loss, preventing the loss return and breaking the training loop.\"}, {\"file\": \"unsloth/models/rl_replacements.py\", \"function\": \"grpo_trainer_compute_loss\", \"line_start\": 712, \"line_end\": 722, \"severity\": \"medium\", \"mechanism\": \"The variable mode is only defined inside the if 'train' in self._metrics branch. If self._metrics does not contain the 'train' key (e.g., during evaluation-only or when the metrics structure is different), the else branch appends to self._metrics['completion_length'] and self._metrics['kl'], but then mode is never assigned. The vLLM metrics block then uses mode in the metric key f'sampling/...' which is undefined, causing a NameError. The original code did not have this vLLM block.\", \"trigger\": \"A vLLM GRPO step where self._metrics does not have the 'train' key (e.g., during the first evaluation or if the metrics structure differs from the assumed one). Then mode is undefined in the vLLM block.\", \"consequence\": \"NameError crash, or if mode is somehow stale, it writes to wrong metric keys.\"}, {\"file\": \"unsloth/models/rl_replacements.py\", \"function\": \"grpo_trainer__generate_and_score_completions\", \"line_start\": 253, \"line_end\": 270, \"severity\": \"high\", \"mechanism\": \"The regex pattern for all_logprobs is replaced with a version that iterates over all_outputs and outputs.outputs, but the original code likely iterated over a different variable (e.g., 'outputs' is a list of vLLM outputs). The replacement uses 'for outputs in all_outputs' and 'for output in outputs.outputs', but the variable all_outputs may not exist in the current TRL version, or the nesting is wrong (double loop). This is a new path that may use an undefined variable or misinterpret the structure.\", \"trigger\": \"Any vLLM generation call where the regex matches the original all_logprobs list comprehension. The replacement introduces a double loop over all_outputs and outputs.outputs; if all_outputs is not defined or the structure differs, it will raise NameError or produce an empty/incomplete list.\", \"consequence\": \"No logprobs are gathered, leading to empty advantages or crash, or wrong importance-sampling-ratio computation.\"}]}",
+ "input_sha256": {
+  "g2": "77b4e46c67d1a44f7de3c2ddbbecc16cde8e881053f13ac0529512743a614892",
+  "scope": "0b961749bcd2bc50e0f54b5483c8a1062ecde6eabb84d49f1f718bb54f2418e1",
+  "meta": "07f490f38961c4f7ab2c40bdc1470b2559c9fd906d089a70b5c966d9254bef52",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py unsloth-11337"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 13230,
+   "tokens_out": 1266,
+   "latency_ms": 31062,
+   "response_sha256": "2292ff6965a888f9344e96a6a4f3a6776637b188e9f6e9fff7d4304900b3c56d"
+  }
+ ],
+ "timestamp": "2026-09-27T02:58:40.896445+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

@@ -1,0 +1,43 @@
+{
+ "case": "unsloth-11337",
+ "which": "fix",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 2,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "unsloth/models/rl_replacements.py",
+    "function": "_unsloth_grpo_accumulation_steps",
+    "line_start": 928,
+    "line_end": 940,
+    "severity": "high",
+    "mechanism": "The helper reads `trainer.model.training` but in the generated trainer, `self.model` may be a DDP/Accelerate wrapper or PEFT base model. The `training` attribute on such wrappers is often not synced with the actual model's training mode; during eval, the wrapper may still report `training=True` (the wrapper's flag is not toggled), so the helper returns `current_gradient_accumulation_steps` from the stale training window instead of 1. The eval loss remains underreported by the accumulation steps, exactly the bug the PR claims to fix.",
+    "trigger": "A GRPO run with `gradient_accumulation_steps > 1` calls `Trainer.evaluate()` inside the training loop; the wrapper's `training` flag stays `True` throughout, so the helper takes the stale path.",
+    "consequence": "`eval_loss` is still divided by `gradient_accumulation_steps` and returns a number that is too small, silently wrong metrics."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"unsloth/models/rl_replacements.py\", \"function\": \"_unsloth_grpo_accumulation_steps\", \"line_start\": 928, \"line_end\": 940, \"severity\": \"high\", \"mechanism\": \"The helper reads `trainer.model.training` but in the generated trainer, `self.model` may be a DDP/Accelerate wrapper or PEFT base model. The `training` attribute on such wrappers is often not synced with the actual model's training mode; during eval, the wrapper may still report `training=True` (the wrapper's flag is not toggled), so the helper returns `current_gradient_accumulation_steps` from the stale training window instead of 1. The eval loss remains underreported by the accumulation steps, exactly the bug the PR claims to fix.\", \"trigger\": \"A GRPO run with `gradient_accumulation_steps > 1` calls `Trainer.evaluate()` inside the training loop; the wrapper's `training` flag stays `True` throughout, so the helper takes the stale path.\", \"consequence\": \"`eval_loss` is still divided by `gradient_accumulation_steps` and returns a number that is too small, silently wrong metrics.\"}]}",
+ "input_sha256": {
+  "g2": "f3551d07b0293b911bef811e77da47be6e7e9b816747dbde57d7749ef5bf16ed",
+  "scope": "35a46b88b344ce83a546d3359d2f53726bd3ee63927d5425159e35bf561b2fb6",
+  "meta": "048856f9d2ea27ec223905af71850f5beadd70d91f11a829ab4c94b894c2a8e4",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py unsloth-11337"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 46811,
+   "tokens_out": 289,
+   "latency_ms": 4379,
+   "response_sha256": "6ed12507e3d090867e8b29cbcbad005de5a75ad6cf62e9607f7fb250c4c37115"
+  }
+ ],
+ "timestamp": "2026-09-27T03:00:00.302746+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

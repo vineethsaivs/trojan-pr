@@ -1,0 +1,43 @@
+{
+ "case": "zoo-1286",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p0",
+ "run": 2,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "unsloth_zoo/rl_replacements.py",
+    "function": "grpo_accumulated_loss",
+    "line_start": 547,
+    "line_end": 553,
+    "severity": "high",
+    "mechanism": "The function unconditionally deletes kwargs['sampling_per_token_logps'], but the caller may not always provide this key. If a caller calls grpo_accumulated_loss without 'sampling_per_token_logps' in kwargs, the 'del' statement raises KeyError, breaking existing callers that don't pass this argument.",
+    "trigger": "Call grpo_accumulated_loss with kwargs that do not contain 'sampling_per_token_logps'.",
+    "consequence": "The training run crashes with a KeyError during GRPO loss computation for any existing caller that does not pass the new optional argument."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"unsloth_zoo/rl_replacements.py\", \"function\": \"grpo_accumulated_loss\", \"line_start\": 547, \"line_end\": 553, \"severity\": \"high\", \"mechanism\": \"The function unconditionally deletes kwargs['sampling_per_token_logps'], but the caller may not always provide this key. If a caller calls grpo_accumulated_loss without 'sampling_per_token_logps' in kwargs, the 'del' statement raises KeyError, breaking existing callers that don't pass this argument.\", \"trigger\": \"Call grpo_accumulated_loss with kwargs that do not contain 'sampling_per_token_logps'.\", \"consequence\": \"The training run crashes with a KeyError during GRPO loss computation for any existing caller that does not pass the new optional argument.\"}]}",
+ "input_sha256": {
+  "g2": "90c49974b9ebce365470add67fee673e5a635d081654880dfce1c297dc6112e8",
+  "scope": "a5f8cf03d5573ef147f557a2526a7cee1a09c265c5d8706957682ec18880fa81",
+  "meta": "4e8ef389ca278440986d66ede2924a7dd7c9f3de995e560aa4c73138ee7fa9b1",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py zoo-1286"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 12560,
+   "tokens_out": 194,
+   "latency_ms": 2719,
+   "response_sha256": "4428296dc94544f5c451da96076c7343a1a512264d2d4802aa837b05e69f732b"
+  }
+ ],
+ "timestamp": "2026-09-27T02:59:34.205598+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

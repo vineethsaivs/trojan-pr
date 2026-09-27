@@ -1,0 +1,43 @@
+{
+ "case": "ds-8313",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 3,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "deepspeed/runtime/utils.py",
+    "function": "clip_grad_norm_",
+    "line_start": 405,
+    "line_end": 419,
+    "severity": "high",
+    "mechanism": "silent numerical bug",
+    "trigger": "gradient contains inf/nan",
+    "consequence": "function returns finite wrong norm and clips based on wrong value, or skips clipping when needed"
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"deepspeed/runtime/utils.py\", \"function\": \"clip_grad_norm_\", \"line_start\": 405, \"line_end\": 419, \"severity\": \"high\", \"mechanism\": \"The gradient is detached and converted to float before computing norm, which can cause incorrect norm when gradients are non-finite (inf/nan). The original code used `p.grad.data.float().norm()` on the gradient directly, which propagates non-finite values; the new code detaches and calls `.float()` on the norm result, which may lose the non-finite sentinel and produce wrong clipping. Additionally, in the inf norm branch, `p.grad.data.abs().max()` is a Python float scalar; converting to a tensor and stacking could be fine, but if there are zero parameters, `parameters[0]` is accessed in the else branch and `all_norms` could be empty causing `torch.stack` on empty list to raise an error. More importantly, the code removes the check for NaN/Inf and returns a finite wrong norm, so clipping is not applied when it should be, and the returned norm is wrong. The original code also explicitly checked `total_norm == float('inf') or ...` and returned -1. This removal is a silent numerical bug: with non-finite gradients (e.g., due to overflow), the norm becomes finite and the function clips or fails to clip incorrectly. The trigger is any training step where gradients contain inf/nan; the consequence is the function returns a wrong finite norm and applies or skips clipping based on a wrong value, potentially causing divergence or incorrect optimization. The mechanism is the loss of non-finite sentinel through detach/float. The severity is high. The line numbers cover the whole changed computation block.\", \"mechanism\": \"silent numerical bug\", \"trigger\": \"gradient contains inf/nan\", \"consequence\": \"function returns finite wrong norm and clips based on wrong value, or skips clipping when needed\"}]}",
+ "input_sha256": {
+  "g2": "cd3422cb09609a632b04a8ff04ef666201b745475f1ad85495d4aff25bdac0db",
+  "scope": "9aa78c7bd41d9ef7d9fef8c2b523c9fce69d9e8ea9752309dc523506a0c2384d",
+  "meta": "5d76a1e059674e9766139cb70231545afbe594ed9ec375c70ff4ac1745fa6f4b",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py ds-8313"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 11596,
+   "tokens_out": 438,
+   "latency_ms": 6670,
+   "response_sha256": "f0f64fa29a8fd4d6ea2b14a82bb6110c94b7c1b7723e23950d52dcd24bcc1575"
+  }
+ ],
+ "timestamp": "2026-09-27T03:00:06.794242+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

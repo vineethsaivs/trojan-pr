@@ -1,0 +1,73 @@
+{
+ "case": "unsloth-11470",
+ "which": "fix",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 2,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "unsloth/trainer.py",
+    "function": "_create_unsloth_optimizer",
+    "line_start": 458,
+    "line_end": 466,
+    "severity": "high",
+    "mechanism": "Silent fallback when decay_parameter_names is empty. If the model has no parameters requiring grad, decay_parameter_names becomes empty set and the filter `(name in decay_parameter_names) is decays` drops all params; optimizer created with empty param_groups leads to runtime error or wrong optimizer state. More importantly, the default `weight_decay=0.0` in the function signature is a sentinel that is never removed: if the caller passes `optimizer_kwargs` without a 'weight_decay' key and the trainer's `self.args.weight_decay` is itself 0.0 (the default), the fallback stays 0.0 and the code still silently applies no decay, which is exactly the bug the PR claims to fix. The fix is incomplete because the decay is only read from the config but the sentinel 0.0 remains as the fallback for any caller that does not supply the decay explicitly.",
+    "trigger": "A run with `weight_decay=0.0` (the default) and an `embedding_learning_rate` set, where `optimizer_kwargs` has no 'weight_decay' key (as in the common adamw_torch path). The code sets weight_decay to 0.0, applies no decay to all groups, and no error is raised.",
+    "consequence": "The model trains with zero weight decay silently, contrary to the PR intent; the user's configured value on the config is still ignored."
+   },
+   {
+    "file": "unsloth/trainer.py",
+    "function": "_install_legacy_resume",
+    "line_start": 540,
+    "line_end": 569,
+    "severity": "high",
+    "mechanism": "The `_unsloth_group_roles` attribute is set on the optimizer instance but the scheduler remap reads it via `_unsloth_base_optimizer` which checks `_unsloth_group_roles in optimizer.__dict__`. The optimizer may be an AcceleratedOptimizer (accelerator.prepare), which does not expose `__dict__` attributes from the wrapped optimizer, so the scheduler hook silently no-ops and the legacy scheduler state is not remapped. The PR's comment acknowledges this but the code does not handle it: the check `getattr(built, '_unsloth_loaded_legacy', False)` will be False when the optimizer is wrapped, so the scheduler's load_state_dict falls through to the base, and the next training step raises from `zip(strict=True)` on `base_lrs`. The PR claims to fix this but it is broken for any FSDP or accelerator-wrapped run.",
+    "trigger": "A run that uses `accelerator.prepare` (common in HF Trainer) after `create_optimizer`; the optimizer passed to `create_scheduler` is the AcceleratedOptimizer, not the raw optimizer, so the remap is skipped.",
+    "consequence": "Resuming a pre-split checkpoint under a wrapped optimizer fails with an unhandled ValueError at the first step after resume, instead of being migrated; the failure moves but is not fixed."
+   },
+   {
+    "file": "unsloth/trainer.py",
+    "function": "create_scheduler",
+    "line_start": 717,
+    "line_end": 725,
+    "severity": "medium",
+    "mechanism": "`super().create_scheduler(num_training_steps, optimizer)` may create a scheduler for an optimizer that is None, or `optimizer or self.optimizer` may be None when the scheduler is created before the optimizer. The code passes `optimizer or self.optimizer` to the remap, but if both are None (e.g., in a `train` call where the scheduler is created before `create_optimizer`), the `_unsloth_base_optimizer(None)` returns None and the scheduler is left unpatched, which is fine. However, the more serious issue is that the scheduler's `load_state_dict` patch is applied only when the optimizer has `_unsloth_group_roles`; but the code sets `_unsloth_group_roles` only in `_install_legacy_resume` which is only called from `_create_unsloth_optimizer`. If `super().create_optimizer()` is used (the non-embedding path), the scheduler is not patched and there is no issue, but if `super().create_scheduler` creates a scheduler with a different optimizer than the one the trainer later uses, the remap can be applied to the wrong optimizer. This is a minor issue; the main defect is the accelerator-wrapped optimizer no-op.",
+    "trigger": "Any run where the scheduler is created after the optimizer but the optimizer passed to `create_scheduler` is the accelerator-wrapped one (common case).",
+    "consequence": "The scheduler's `_unsloth_loaded_legacy` gate is false, so the scheduler's `load_state_dict` is not overridden and resume fails at `base_lrs` zip."
+   },
+   {
+    "file": "unsloth/trainer.py",
+    "function": "_migrate_legacy_optimizer_state",
+    "line_start": 498,
+    "line_end": 546,
+    "severity": "low",
+    "mechanism": "The check `len(set(saved_ids)) != len(saved_ids)` assumes saved_ids are unique, but the old layout used `id(param)` as saved ids, and `id` can be reused after Python GC reuses memory, so a checkpoint with two different params that happen to get the same id (after a param is freed and a new one is allocated) would be incorrectly rejected (or worse, paired incorrectly if the set membership is not unique). The code says 'exact' but `id` reuse is a real possibility in a long-running process; the PR claims to refuse anything that is not exactly the old shape, but id reuse can produce a checkpoint that is not unique and is then rejected, which is a safe refusal, not a corruption, so severity is low.",
+    "trigger": "A checkpoint saved in a process where a parameter was freed and later a new parameter is allocated at the same memory address, causing id reuse; the two saved ids are equal and the code rejects the checkpoint, so resume fails with a torch error.",
+    "consequence": "Resume fails with a torch error (safe refusal) rather than a silent corruption; but the PR's claim of exactness is not fully true."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"unsloth/trainer.py\", \"function\": \"_create_unsloth_optimizer\", \"line_start\": 458, \"line_end\": 466, \"severity\": \"high\", \"mechanism\": \"Silent fallback when decay_parameter_names is empty. If the model has no parameters requiring grad, decay_parameter_names becomes empty set and the filter `(name in decay_parameter_names) is decays` drops all params; optimizer created with empty param_groups leads to runtime error or wrong optimizer state. More importantly, the default `weight_decay=0.0` in the function signature is a sentinel that is never removed: if the caller passes `optimizer_kwargs` without a 'weight_decay' key and the trainer's `self.args.weight_decay` is itself 0.0 (the default), the fallback stays 0.0 and the code still silently applies no decay, which is exactly the bug the PR claims to fix. The fix is incomplete because the decay is only read from the config but the sentinel 0.0 remains as the fallback for any caller that does not supply the decay explicitly.\", \"trigger\": \"A run with `weight_decay=0.0` (the default) and an `embedding_learning_rate` set, where `optimizer_kwargs` has no 'weight_decay' key (as in the common adamw_torch path). The code sets weight_decay to 0.0, applies no decay to all groups, and no error is raised.\", \"consequence\": \"The model trains with zero weight decay silently, contrary to the PR intent; the user's configured value on the config is still ignored.\"}, {\"file\": \"unsloth/trainer.py\", \"function\": \"_install_legacy_resume\", \"line_start\": 540, \"line_end\": 569, \"severity\": \"high\", \"mechanism\": \"The `_unsloth_group_roles` attribute is set on the optimizer instance but the scheduler remap reads it via `_unsloth_base_optimizer` which checks `_unsloth_group_roles in optimizer.__dict__`. The optimizer may be an AcceleratedOptimizer (accelerator.prepare), which does not expose `__dict__` attributes from the wrapped optimizer, so the scheduler hook silently no-ops and the legacy scheduler state is not remapped. The PR's comment acknowledges this but the code does not handle it: the check `getattr(built, '_unsloth_loaded_legacy', False)` will be False when the optimizer is wrapped, so the scheduler's load_state_dict falls through to the base, and the next training step raises from `zip(strict=True)` on `base_lrs`. The PR claims to fix this but it is broken for any FSDP or accelerator-wrapped run.\", \"trigger\": \"A run that uses `accelerator.prepare` (common in HF Trainer) after `create_optimizer`; the optimizer passed to `create_scheduler` is the AcceleratedOptimizer, not the raw optimizer, so the remap is skipped.\", \"consequence\": \"Resuming a pre-split checkpoint under a wrapped optimizer fails with an unhandled ValueError at the first step after resume, instead of being migrated; the failure moves but is not fixed.\"}, {\"file\": \"unsloth/trainer.py\", \"function\": \"create_scheduler\", \"line_start\": 717, \"line_end\": 725, \"severity\": \"medium\", \"mechanism\": \"`super().create_scheduler(num_training_steps, optimizer)` may create a scheduler for an optimizer that is None, or `optimizer or self.optimizer` may be None when the scheduler is created before the optimizer. The code passes `optimizer or self.optimizer` to the remap, but if both are None (e.g., in a `train` call where the scheduler is created before `create_optimizer`), the `_unsloth_base_optimizer(None)` returns None and the scheduler is left unpatched, which is fine. However, the more serious issue is that the scheduler's `load_state_dict` patch is applied only when the optimizer has `_unsloth_group_roles`; but the code sets `_unsloth_group_roles` only in `_install_legacy_resume` which is only called from `_create_unsloth_optimizer`. If `super().create_optimizer()` is used (the non-embedding path), the scheduler is not patched and there is no issue, but if `super().create_scheduler` creates a scheduler with a different optimizer than the one the trainer later uses, the remap can be applied to the wrong optimizer. This is a minor issue; the main defect is the accelerator-wrapped optimizer no-op.\", \"trigger\": \"Any run where the scheduler is created after the optimizer but the optimizer passed to `create_scheduler` is the accelerator-wrapped one (common case).\", \"consequence\": \"The scheduler's `_unsloth_loaded_legacy` gate is false, so the scheduler's `load_state_dict` is not overridden and resume fails at `base_lrs` zip.\"}, {\"file\": \"unsloth/trainer.py\", \"function\": \"_migrate_legacy_optimizer_state\", \"line_start\": 498, \"line_end\": 546, \"severity\": \"low\", \"mechanism\": \"The check `len(set(saved_ids)) != len(saved_ids)` assumes saved_ids are unique, but the old layout used `id(param)` as saved ids, and `id` can be reused after Python GC reuses memory, so a checkpoint with two different params that happen to get the same id (after a param is freed and a new one is allocated) would be incorrectly rejected (or worse, paired incorrectly if the set membership is not unique). The code says 'exact' but `id` reuse is a real possibility in a long-running process; the PR claims to refuse anything that is not exactly the old shape, but id reuse can produce a checkpoint that is not unique and is then rejected, which is a safe refusal, not a corruption, so severity is low.\", \"trigger\": \"A checkpoint saved in a process where a parameter was freed and later a new parameter is allocated at the same memory address, causing id reuse; the two saved ids are equal and the code rejects the checkpoint, so resume fails with a torch error.\", \"consequence\": \"Resume fails with a torch error (safe refusal) rather than a silent corruption; but the PR's claim of exactness is not fully true.\"}]}",
+ "input_sha256": {
+  "g2": "962b78b0bd23f34570cb79f870b40e0e3b3e16b935a0c780a0a8f04f5bb49add",
+  "scope": "8a45b12c7829a79ecac45008cbf22f1c13f89e84df5aec0db2727b3d3029fa11",
+  "meta": "de5c8ee79b153a267bef3a54d7685d08c36b88e7cd777b64284ea4fda9679f24",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py unsloth-11470"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 19216,
+   "tokens_out": 1429,
+   "latency_ms": 19896,
+   "response_sha256": "862210bf5953f19bc5f659735b04b6eabc066fa91dced0b2cb86c2084e198114"
+  }
+ ],
+ "timestamp": "2026-09-27T03:00:17.591282+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

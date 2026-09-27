@@ -1,0 +1,73 @@
+{
+ "case": "zoo-1286",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 3,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "unsloth_zoo/rl_replacements.py",
+    "function": "grpo_compute_loss",
+    "line_start": 255,
+    "line_end": 259,
+    "severity": "high",
+    "mechanism": "In dapo loss branch, normalizer = num_items_in_batch / num_processes can be zero if num_items_in_batch is None (when not provided) and also it is not divided by gradient accumulation steps, leading to wrong loss scale and possibly NaN/infinite loss. The PR also lacks gradient accumulation division for dapo.",
+    "trigger": "loss_type='dapo' and num_items_in_batch not set in kwargs (None), or num_processes not set. Also dapo loss not divided by gradient accumulation steps causes wrong scale.",
+    "consequence": "loss = (loss_i * mask).sum() / normalizer with normalizer=0 leads to division by zero (inf/NaN) or if not None, loss is not scaled by gradient accumulation steps, wrong training loss and gradients."
+   },
+   {
+    "file": "unsloth_zoo/rl_replacements.py",
+    "function": "align_logprobs_with_mask",
+    "line_start": 139,
+    "line_end": 179,
+    "severity": "medium",
+    "mechanism": "Uses torch.argmax(attention_mask, dim=1) to find first non-pad position. If a row is all zeros (fully masked), argmax returns 0 (first index) even if no valid token, causing dest_indices to start at 0 and assign logprobs to positions that should be padding. Then padded_logprobs gets non-zero values at positions that are 0 in mask, but later mask zeros them in loss, so it may not directly break loss, but the assigned values are wrong for metrics and importance ratio computation that uses mask multiplication.",
+    "trigger": "A sequence in the batch has attention_mask all zeros (fully masked prompt or completion). Then argmax=0 and dest_indices start at 0, out-of-bounds filter may allow some assignments into mask==0 region.",
+    "consequence": "padded_logprobs have incorrect non-pad values in masked positions, and importance_sampling_ratio and delta metrics are computed on wrong positions, but loss uses mask so final loss may be unaffected; however metrics (delta, flat_is_ratio) are wrong and importance ratio for loss may use mask to zero them so it is not a direct loss error but a silent metric error."
+   },
+   {
+    "file": "unsloth_zoo/rl_replacements.py",
+    "function": "grpo_compute_loss",
+    "line_start": 255,
+    "line_end": 259,
+    "severity": "high",
+    "mechanism": "In dapo branch, normalizer = num_items_in_batch / num_processes is not divided by current_gradient_accumulation_steps. The PR updates other loss types to divide by current_gradient_accumulation_steps but dapo is missing this division, causing loss to be scaled by number of gradient steps incorrectly. Also normalizer can be zero if num_items_in_batch is None.",
+    "trigger": "loss_type='dapo' and training with gradient accumulation steps > 1, or num_items_in_batch not provided.",
+    "consequence": "loss is not scaled by gradient accumulation steps, wrong loss value and gradient magnitude; also if normalizer=0, division by zero."
+   },
+   {
+    "file": "unsloth_zoo/rl_replacements.py",
+    "function": "grpo_compute_loss",
+    "line_start": 255,
+    "line_end": 259,
+    "severity": "high",
+    "mechanism": "In dapo branch, normalizer = num_items_in_batch / num_processes is not divided by current_gradient_accumulation_steps. The PR updates other loss types to divide by current_gradient_accumulation_steps but dapo is missing this division, causing loss to be scaled by number of gradient steps incorrectly. Also normalizer can be zero if num_items_in_batch is None.",
+    "trigger": "loss_type='dapo' and training with gradient accumulation steps > 1, or num_items_in_batch not provided.",
+    "consequence": "loss is not scaled by gradient accumulation steps, wrong loss value and gradient magnitude; also if normalizer=0, division by zero."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"unsloth_zoo/rl_replacements.py\", \"function\": \"grpo_compute_loss\", \"line_start\": 255, \"line_end\": 259, \"severity\": \"high\", \"mechanism\": \"In dapo loss branch, normalizer = num_items_in_batch / num_processes can be zero if num_items_in_batch is None (when not provided) and also it is not divided by gradient accumulation steps, leading to wrong loss scale and possibly NaN/infinite loss. The PR also lacks gradient accumulation division for dapo.\", \"trigger\": \"loss_type='dapo' and num_items_in_batch not set in kwargs (None), or num_processes not set. Also dapo loss not divided by gradient accumulation steps causes wrong scale.\", \"consequence\": \"loss = (loss_i * mask).sum() / normalizer with normalizer=0 leads to division by zero (inf/NaN) or if not None, loss is not scaled by gradient accumulation steps, wrong training loss and gradients.\"}, {\"file\": \"unsloth_zoo/rl_replacements.py\", \"function\": \"align_logprobs_with_mask\", \"line_start\": 139, \"line_end\": 179, \"severity\": \"medium\", \"mechanism\": \"Uses torch.argmax(attention_mask, dim=1) to find first non-pad position. If a row is all zeros (fully masked), argmax returns 0 (first index) even if no valid token, causing dest_indices to start at 0 and assign logprobs to positions that should be padding. Then padded_logprobs gets non-zero values at positions that are 0 in mask, but later mask zeros them in loss, so it may not directly break loss, but the assigned values are wrong for metrics and importance ratio computation that uses mask multiplication.\", \"trigger\": \"A sequence in the batch has attention_mask all zeros (fully masked prompt or completion). Then argmax=0 and dest_indices start at 0, out-of-bounds filter may allow some assignments into mask==0 region.\", \"consequence\": \"padded_logprobs have incorrect non-pad values in masked positions, and importance_sampling_ratio and delta metrics are computed on wrong positions, but loss uses mask so final loss may be unaffected; however metrics (delta, flat_is_ratio) are wrong and importance ratio for loss may use mask to zero them so it is not a direct loss error but a silent metric error.\"}, {\"file\": \"unsloth_zoo/rl_replacements.py\", \"function\": \"grpo_compute_loss\", \"line_start\": 255, \"line_end\": 259, \"severity\": \"high\", \"mechanism\": \"In dapo branch, normalizer = num_items_in_batch / num_processes is not divided by current_gradient_accumulation_steps. The PR updates other loss types to divide by current_gradient_accumulation_steps but dapo is missing this division, causing loss to be scaled by number of gradient steps incorrectly. Also normalizer can be zero if num_items_in_batch is None.\", \"trigger\": \"loss_type='dapo' and training with gradient accumulation steps > 1, or num_items_in_batch not provided.\", \"consequence\": \"loss is not scaled by gradient accumulation steps, wrong loss value and gradient magnitude; also if normalizer=0, division by zero.\"}, {\"file\": \"unsloth_zoo/rl_replacements.py\", \"function\": \"grpo_compute_loss\", \"line_start\": 255, \"line_end\": 259, \"severity\": \"high\", \"mechanism\": \"In dapo branch, normalizer = num_items_in_batch / num_processes is not divided by current_gradient_accumulation_steps. The PR updates other loss types to divide by current_gradient_accumulation_steps but dapo is missing this division, causing loss to be scaled by number of gradient steps incorrectly. Also normalizer can be zero if num_items_in_batch is None.\", \"trigger\": \"loss_type='dapo' and training with gradient accumulation steps > 1, or num_items_in_batch not provided.\", \"consequence\": \"loss is not scaled by gradient accumulation steps, wrong loss value and gradient magnitude; also if normalizer=0, division by zero.\"}]}",
+ "input_sha256": {
+  "g2": "90c49974b9ebce365470add67fee673e5a635d081654880dfce1c297dc6112e8",
+  "scope": "a5f8cf03d5573ef147f557a2526a7cee1a09c265c5d8706957682ec18880fa81",
+  "meta": "4e8ef389ca278440986d66ede2924a7dd7c9f3de995e560aa4c73138ee7fa9b1",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py zoo-1286"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 12819,
+   "tokens_out": 929,
+   "latency_ms": 10185,
+   "response_sha256": "653a5920bb6d3252f4f8d83b65e1a8bb7078b3458e79f761e60765cd4450fbfe"
+  }
+ ],
+ "timestamp": "2026-09-27T03:00:32.074484+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

@@ -1,0 +1,43 @@
+{
+ "case": "st-4019",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p0",
+ "run": 3,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py",
+    "function": "batch_hard_triplet_soft_margin_loss",
+    "line_start": 40,
+    "line_end": 41,
+    "severity": "medium",
+    "mechanism": "A mask_anchor_negative. Any distance of 0.0 in the pairwise distance matrix is valid as a negative. The code then uses this to compute hardest_negative_dist, and the loss is computed as log1p(exp(hardest_positive_dist - hardest_negative_dist)). When the anchor's embedding is identical to a negative embedding, the term exp(0) = 1, so tl = log(2) \u2248 0.693. This is non-zero and will penalize the model even though the anchor and negative are at the same distance, which is not a hard negative. The same issue exists in the original BatchHardTripletLoss implementation, but this new loss is a new class and inherits the flaw. The exact same mechanism is present in the original BatchHardTripletLoss but this is a new file and a new PR, so it's a new defect being introduced.",
+    "trigger": "An anchor that has an identical embedding to a negative embedding within the batch. The mask_anchor_negative includes such a pair, and the log1p(exp(0)) term yields a non-zero loss. This forces the model to push apart embeddings that are already at the same distance, which is not a hard negative. This can cause instability or suboptimal performance, but it's not a crash or security issue.",
+    "consequence": "The loss is non-zero for triplets that are not hard negatives (anchor and negative at same distance), which may lead to overfitting or training instability, but it's a medium-severity defect because it's a correctness issue in the loss calculation that can be avoided by masking out zero distances before computing the hardest negative, as is done in the original BatchHardTripletLoss. The exact same mechanism is in the original BatchHardTripletLoss but this is a new class and a new PR, so it's a new defect being introduced."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"sentence_transformers/losses/BatchHardSoftMarginTripletLoss.py\", \"function\": \"batch_hard_triplet_soft_margin_loss\", \"line_start\": 40, \"line_end\": 41, \"severity\": \"medium\", \"mechanism\": \"A mask_anchor_negative. Any distance of 0.0 in the pairwise distance matrix is valid as a negative. The code then uses this to compute hardest_negative_dist, and the loss is computed as log1p(exp(hardest_positive_dist - hardest_negative_dist)). When the anchor's embedding is identical to a negative embedding, the term exp(0) = 1, so tl = log(2) \u2248 0.693. This is non-zero and will penalize the model even though the anchor and negative are at the same distance, which is not a hard negative. The same issue exists in the original BatchHardTripletLoss implementation, but this new loss is a new class and inherits the flaw. The exact same mechanism is present in the original BatchHardTripletLoss but this is a new file and a new PR, so it's a new defect being introduced.\", \"trigger\": \"An anchor that has an identical embedding to a negative embedding within the batch. The mask_anchor_negative includes such a pair, and the log1p(exp(0)) term yields a non-zero loss. This forces the model to push apart embeddings that are already at the same distance, which is not a hard negative. This can cause instability or suboptimal performance, but it's not a crash or security issue.\", \"consequence\": \"The loss is non-zero for triplets that are not hard negatives (anchor and negative at same distance), which may lead to overfitting or training instability, but it's a medium-severity defect because it's a correctness issue in the loss calculation that can be avoided by masking out zero distances before computing the hardest negative, as is done in the original BatchHardTripletLoss. The exact same mechanism is in the original BatchHardTripletLoss but this is a new class and a new PR, so it's a new defect being introduced.\"}]}",
+ "input_sha256": {
+  "g2": "46ae6743a0c18e6962b6387847f169b2e253f7525987b496e3bb286223a55579",
+  "scope": "8522b61bf7f55f1738c34fdfc7f125f5a1eeff0c3156d27d2150f4f005199dde",
+  "meta": "9ffe77adb89274581e441d98ec04ad55ac5ca39228d923fe5008992127c19aef",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py st-4019"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 2136,
+   "tokens_out": 471,
+   "latency_ms": 6983,
+   "response_sha256": "80fdbd159103039bf71849440768c21965af403351867fd3609047dea16506ac"
+  }
+ ],
+ "timestamp": "2026-09-27T03:00:21.888329+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

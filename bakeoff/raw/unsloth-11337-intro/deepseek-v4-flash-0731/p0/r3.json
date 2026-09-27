@@ -1,0 +1,73 @@
+{
+ "case": "unsloth-11337",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p0",
+ "run": 3,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "unsloth/models/rl_replacements.py",
+    "function": "grpo_trainer__generate_and_score_completions",
+    "line_start": 220,
+    "line_end": 262,
+    "severity": "high",
+    "mechanism": "The replacement string for the `all_logprobs` pattern uses `for outputs in all_outputs` but the upstream TRL code uses `all_outputs` as a list of vLLM `RequestOutput` objects, not a list of objects with `.outputs`. The pattern replaces the original `all_logprobs` comprehension which iterated over `all_outputs` then `outputs.outputs`. The new code iterates `for output in outputs.outputs` after `for outputs in all_outputs`, which is correct if `all_outputs` is a list of objects each having `.outputs`. However, the `sanitize_logprob` import is added but `all_outputs` is not defined in the replaced scope - it should be `outputs` or `all_outputs` from the surrounding function. The trigger is that the pattern-to-find regex matches the exact block and the replacement injects code referencing `all_outputs` which may not be defined, causing a NameError at runtime when this code path executes. Consequence: crash with NameError when vLLM is used and gradient accumulation condition is met.",
+    "trigger": "Running GRPO with vLLM enabled and gradient accumulation steps divisible by generate_every, triggering the replaced `all_logprobs` code path.",
+    "consequence": "NameError: name 'all_outputs' is not defined, causing training to crash."
+   },
+   {
+    "file": "unsloth/models/rl_replacements.py",
+    "function": "grpo_trainer__generate_and_score_completions",
+    "line_start": 220,
+    "line_end": 262,
+    "severity": "high",
+    "mechanism": "The replacement string ends with a `\"\"\"` (triple-quote) which is not closed in the new code. The original line had `left_pack_padding(...) ...` with a `\"\"\"` ending the string, but the new replacement_lines string is assigned to `replacement_lines` and then `function.replace(line_to_replace, replacement_lines)` is called. The replacement string itself ends with `\"\"\"` which is an unclosed triple-quoted string, causing a syntax error in the generated function. The trigger is that the code generation happens at import time and the resulting function is parsed, causing a syntax error. Consequence: SyntaxError due to unclosed string, preventing the module from being imported.",
+    "trigger": "Importing `unsloth/models/rl_replacements.py` which triggers the code generation.",
+    "consequence": "SyntaxError: unterminated string literal, module import fails."
+   },
+   {
+    "file": "unsloth/models/rl_replacements.py",
+    "function": "grpo_trainer__generate_and_score_completions",
+    "line_start": 220,
+    "line_end": 262,
+    "severity": "high",
+    "mechanism": "The replacement text for `all_logprobs` uses `sanitize_logprob(next(iter(logprob.values())))` but the upstream TRL function `sanitize_logprob` is expected to handle `None` values and the new code calls `sanitize_logprob` with a possibly `None` logprob (if the logprob is None, `next(iter(logprob.values()))` will raise StopIteration). The trigger is when `output.logprobs` contains a dict with no values or a `None` logprob. Consequence: StopIteration or TypeError, causing crash during vLLM logprob extraction.",
+    "trigger": "vLLM returns logprobs where a logprob value is missing or empty, causing the `next(iter(...))` call to fail.",
+    "consequence": "StopIteration or TypeError, training crash."
+   },
+   {
+    "file": "unsloth/models/rl_replacements.py",
+    "function": "grpo_trainer__generate_and_score_completions",
+    "line_start": 220,
+    "line_end": 262,
+    "severity": "high",
+    "mechanism": "The replacement text references `all_outputs` but the original code pattern matched `for output in outputs.outputs` which is inside a loop over `all_outputs` in the surrounding function. The new code adds `for outputs in all_outputs` and `for output in outputs.outputs` but the `all_outputs` variable is not defined in the replaced scope - it should be `all_outputs` from the enclosing function, but the regex matched a block that doesn't include `all_outputs` definition. The trigger is that the regex pattern matched a block that is used in a context where `all_outputs` is not available. Consequence: NameError at runtime when the code executes.",
+    "trigger": "The `all_logprobs` pattern is matched and replaced, but `all_outputs` is not defined in the surrounding code when the replacement is applied.",
+    "consequence": "NameError: name 'all_outputs' is not defined, crash during training."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"unsloth/models/rl_replacements.py\", \"function\": \"grpo_trainer__generate_and_score_completions\", \"line_start\": 220, \"line_end\": 262, \"severity\": \"high\", \"mechanism\": \"The replacement string for the `all_logprobs` pattern uses `for outputs in all_outputs` but the upstream TRL code uses `all_outputs` as a list of vLLM `RequestOutput` objects, not a list of objects with `.outputs`. The pattern replaces the original `all_logprobs` comprehension which iterated over `all_outputs` then `outputs.outputs`. The new code iterates `for output in outputs.outputs` after `for outputs in all_outputs`, which is correct if `all_outputs` is a list of objects each having `.outputs`. However, the `sanitize_logprob` import is added but `all_outputs` is not defined in the replaced scope - it should be `outputs` or `all_outputs` from the surrounding function. The trigger is that the pattern-to-find regex matches the exact block and the replacement injects code referencing `all_outputs` which may not be defined, causing a NameError at runtime when this code path executes. Consequence: crash with NameError when vLLM is used and gradient accumulation condition is met.\", \"trigger\": \"Running GRPO with vLLM enabled and gradient accumulation steps divisible by generate_every, triggering the replaced `all_logprobs` code path.\", \"consequence\": \"NameError: name 'all_outputs' is not defined, causing training to crash.\"}, {\"file\": \"unsloth/models/rl_replacements.py\", \"function\": \"grpo_trainer__generate_and_score_completions\", \"line_start\": 220, \"line_end\": 262, \"severity\": \"high\", \"mechanism\": \"The replacement string ends with a `\\\"\\\"\\\"` (triple-quote) which is not closed in the new code. The original line had `left_pack_padding(...) ...` with a `\\\"\\\"\\\"` ending the string, but the new replacement_lines string is assigned to `replacement_lines` and then `function.replace(line_to_replace, replacement_lines)` is called. The replacement string itself ends with `\\\"\\\"\\\"` which is an unclosed triple-quoted string, causing a syntax error in the generated function. The trigger is that the code generation happens at import time and the resulting function is parsed, causing a syntax error. Consequence: SyntaxError due to unclosed string, preventing the module from being imported.\", \"trigger\": \"Importing `unsloth/models/rl_replacements.py` which triggers the code generation.\", \"consequence\": \"SyntaxError: unterminated string literal, module import fails.\"}, {\"file\": \"unsloth/models/rl_replacements.py\", \"function\": \"grpo_trainer__generate_and_score_completions\", \"line_start\": 220, \"line_end\": 262, \"severity\": \"high\", \"mechanism\": \"The replacement text for `all_logprobs` uses `sanitize_logprob(next(iter(logprob.values())))` but the upstream TRL function `sanitize_logprob` is expected to handle `None` values and the new code calls `sanitize_logprob` with a possibly `None` logprob (if the logprob is None, `next(iter(logprob.values()))` will raise StopIteration). The trigger is when `output.logprobs` contains a dict with no values or a `None` logprob. Consequence: StopIteration or TypeError, causing crash during vLLM logprob extraction.\", \"trigger\": \"vLLM returns logprobs where a logprob value is missing or empty, causing the `next(iter(...))` call to fail.\", \"consequence\": \"StopIteration or TypeError, training crash.\"}, {\"file\": \"unsloth/models/rl_replacements.py\", \"function\": \"grpo_trainer__generate_and_score_completions\", \"line_start\": 220, \"line_end\": 262, \"severity\": \"high\", \"mechanism\": \"The replacement text references `all_outputs` but the original code pattern matched `for output in outputs.outputs` which is inside a loop over `all_outputs` in the surrounding function. The new code adds `for outputs in all_outputs` and `for output in outputs.outputs` but the `all_outputs` variable is not defined in the replaced scope - it should be `all_outputs` from the enclosing function, but the regex matched a block that doesn't include `all_outputs` definition. The trigger is that the regex pattern matched a block that is used in a context where `all_outputs` is not available. Consequence: NameError at runtime when the code executes.\", \"trigger\": \"The `all_logprobs` pattern is matched and replaced, but `all_outputs` is not defined in the surrounding code when the replacement is applied.\", \"consequence\": \"NameError: name 'all_outputs' is not defined, crash during training.\"}]}",
+ "input_sha256": {
+  "g2": "77b4e46c67d1a44f7de3c2ddbbecc16cde8e881053f13ac0529512743a614892",
+  "scope": "0b961749bcd2bc50e0f54b5483c8a1062ecde6eabb84d49f1f718bb54f2418e1",
+  "meta": "07f490f38961c4f7ab2c40bdc1470b2559c9fd906d089a70b5c966d9254bef52",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py unsloth-11337"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 12971,
+   "tokens_out": 1112,
+   "latency_ms": 12623,
+   "response_sha256": "50512c1c061ae14f23e5477e47ec7087bd64382ffb36599fcaede39a25f2bfab"
+  }
+ ],
+ "timestamp": "2026-09-27T03:00:35.301647+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

@@ -1,0 +1,43 @@
+{
+ "case": "ds-8334",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 3,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "deepspeed/runtime/data_pipeline/curriculum_scheduler.py",
+    "function": "__fixed_root_update_difficulty",
+    "line_start": 105,
+    "line_end": 118,
+    "severity": "medium",
+    "mechanism": "the power-root is applied correctly but the clamp is one-sided \u2014 after subtracting the modulo, there is no ceiling to min_difficulty. The code only clamps to max_difficulty, not to min_difficulty.",
+    "trigger": "global_steps < difficulty_step * something, e.g., fixed_root with min=1, difficulty_step=8, total_curriculum_step large, and small global_steps (like 5) gives next_difficulty= floor((5/10000)^(1/2)* (max-min)+min) = floor(0.022*... ) = 0, then subtract 0%8 = 0, so current becomes 0, below min. The scheduler continues to return 0, which is below the minimum.",
+    "consequence": "the training uses a difficulty below the configured minimum, violating the curriculum's lower bound, and the scheduler does not follow the intended curriculum. This is a silent numerical bug."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"deepspeed/runtime/data_pipeline/curriculum_scheduler.py\", \"function\": \"__fixed_root_update_difficulty\", \"line_start\": 105, \"line_end\": 118, \"severity\": \"medium\", \"mechanism\": \"power and root applied in different order \u2014 the formula computes (global_steps/total_curriculum_step)^(1/root_degree) but the correct curriculum formula in the paper is (global_steps/total_curriculum_step)^root_degree? No, the paper uses (step/total)^(1/degree) \u2014 but the issue is the rounding/clamping: the code computes floor of a value that may be negative when global_steps is less than total_curriculum_step, then subtracts the modulo. However, the main defect is that after subtracting the modulo, the result can be less than min_difficulty (e.g., when the floor value is less than difficulty_step, the modulo subtraction brings it below min). This can produce a current_difficulty below the configured minimum, violating the curriculum's lower bound. Trigger: fixed_root or fixed_linear schedule with min_difficulty=1, difficulty_step=8, and global_steps such that the unclamped floor is less than 8 (e.g., global_steps=5, total_curriculum_step=10000), resulting in next_difficulty negative or below min. Consequence: the training uses a difficulty lower than the configured minimum, causing the scheduler to not follow the curriculum and potentially leading to incorrect training behavior. This is a silent numerical bug since it doesn't raise an error. The code does not re-clamp after the modulo subtraction.\", \"mechanism\": \"the power-root is applied correctly but the clamp is one-sided \u2014 after subtracting the modulo, there is no ceiling to min_difficulty. The code only clamps to max_difficulty, not to min_difficulty.\", \"line_start\": 105, \"line_end\": 118, \"severity\": \"medium\", \"trigger\": \"global_steps < difficulty_step * something, e.g., fixed_root with min=1, difficulty_step=8, total_curriculum_step large, and small global_steps (like 5) gives next_difficulty= floor((5/10000)^(1/2)* (max-min)+min) = floor(0.022*... ) = 0, then subtract 0%8 = 0, so current becomes 0, below min. The scheduler continues to return 0, which is below the minimum.\", \"consequence\": \"the training uses a difficulty below the configured minimum, violating the curriculum's lower bound, and the scheduler does not follow the intended curriculum. This is a silent numerical bug.\"}]}",
+ "input_sha256": {
+  "g2": "7d8f8337cab6c0f60b05acafc2896206d6785d217ab528ffe449750a280ac793",
+  "scope": "0aaa38d73d6c7c0c07114bba97f1878a578c89d42e6b87bbeee18840fee18874",
+  "meta": "cfd774011be1b3286a6b0b577e12c8d7ff84a442ad5e5d35dd69b2a826758636",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py ds-8334"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 3958,
+   "tokens_out": 596,
+   "latency_ms": 7368,
+   "response_sha256": "367f3e1eb42dc4ff77a1e3cff8c6d9595d1bf0ea3e89df5343c426247451cd84"
+  }
+ ],
+ "timestamp": "2026-09-27T03:00:14.903850+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

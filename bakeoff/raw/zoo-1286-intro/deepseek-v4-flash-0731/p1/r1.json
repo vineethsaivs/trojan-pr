@@ -1,0 +1,87 @@
+{
+ "case": "zoo-1286",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 1,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "unsloth_zoo/rl_replacements.py",
+    "function": "grpo_compute_loss",
+    "line_start": 262,
+    "line_end": 267,
+    "severity": "high",
+    "mechanism": "silent numerical bug when use_vllm is True: importance_sampling_ratio = torch.exp((old * mask) - sampling_per_token_logps); the ratio is computed on the aligned old and sampling logprobs but the mask may contain zeros for left-padded prompt tokens; the padding values are set to 0.0, so for those positions exp(0.0 - logp) = exp(-logp) which can be large but is then clamped by max; more importantly, the ratio is not masked (multiplied by mask) before being applied, so the loss on masked positions gets multiplied by a non-zero ratio, altering the loss incorrectly; also the cap is only applied with max, no min clamp, so when the ratio is very small it can underflow to 0 and kill the loss entirely for that token; trigger: any vLLM GRPO run with sampling_per_token_logps provided and any token where the old logprob is much smaller than the sampling logprob causing underflow; consequence: incorrect loss and gradients, possibly zero loss for tokens and wrong training",
+    "mechanism_detail": "The code at line 262 computes importance_sampling_ratio without masking the mask, and later multiplies loss_i by it even on masked positions. The cap is only max-side, so underflow to 0 is possible. The metric delta and flat_is_ratio are computed with mask, but loss multiplication is not masked, so the loss is altered on padding tokens."
+   },
+   {
+    "file": "unsloth_zoo/rl_replacements.py",
+    "function": "grpo_accumulated_loss",
+    "line_start": 567,
+    "line_end": 571,
+    "severity": "high",
+    "mechanism": "unconditional del kwargs[\"sampling_per_token_logps\"] will raise KeyError if the key is not present; trigger: any call to grpo_accumulated_loss that does not pass sampling_per_token_logps (e.g., non-vLLM runs or when the trainer doesn't set that kwarg) will crash with KeyError; consequence: runtime crash, breaking all non-vLLM GRPO training",
+    "mechanism_detail": "The line deletes the key from kwargs without checking existence. Since the function is used for all GRPO loss computations, and sampling_per_token_logps is only provided when trainer.use_vllm is True (per the PR body), any non-vLLM call will fail."
+   },
+   {
+    "file": "unsloth_zoo/rl_replacements.py",
+    "function": "grpo_compute_loss",
+    "line_start": 301,
+    "line_end": 308,
+    "severity": "medium",
+    "mechanism": "when use_vllm is True and sampling_per_token_logps is not None, the loss is multiplied by importance_sampling_ratio but the ratio is not divided by a normalizer (like current_gradient_accumulation_steps) for the vLLM path; in the dapo loss branch, the loss is divided by num_items_in_batch/num_processes, but that normalizer could be zero if num_items_in_batch is 0 or not provided; also for non-dapo vLLM runs, the loss is not scaled by current_gradient_accumulation_steps, causing the loss to be scaled incorrectly when gradient accumulation is used; trigger: vLLM run with gradient accumulation steps > 1, or dapo run with num_items_in_batch = 0; consequence: loss scale is wrong, possibly too large or zero, causing incorrect training",
+    "mechanism_detail": "The vLLM path multiplies loss_i by importance_sampling_ratio but doesn't apply any division by current_gradient_accumulation_steps. The dapo branch divides by normalizer = num_items_in_batch/num_processes, but if num_items_in_batch is 0 or None, normalizer becomes 0 and division by zero occurs (no clamp). This is a silent numerical bug."
+   },
+   {
+    "file": "unsloth_zoo/rl_replacements.py",
+    "function": "align_logprobs_with_mask",
+    "line_start": 129,
+    "line_end": 168,
+    "severity": "medium",
+    "mechanism": "the function uses torch.argmax(attention_mask, dim=1) to get left_pad_counts; if the attention_mask has a row where all values are 0 (fully masked row), argmax returns 0 and dest_indices start at 0, which maps logprobs to the beginning of the padded tensor, but the mask is all zeros so the whole row is invalid and no assignment happens, which is fine; however if the mask has a row where the first non-zero token is at position 0 (no left padding), argmax returns 0, which is correct; the bug is that the function assumes the logprob tensor has the same sequence length as the mask, but if the logprob tensor is longer or shorter, the out-of-bounds filtering may drop valid tokens silently; trigger: when the logprob tensor and mask lengths differ by more than the left-pad count, some tokens are dropped; consequence: missing logprobs for some tokens, leading to incorrect importance sampling and loss",
+    "mechanism_detail": "The function only filters out-of-bounds when dest_indices < mask_seq_len, but doesn't check that the logprob_seq_len is exactly equal to the number of non-padded tokens in the mask; if there are extra tokens (e.g., prompt tokens that were not removed), they will be placed at positions that may overlap with completion tokens, causing wrong alignment. Also, if a row is fully masked, argmax returns 0 and the function may silently align to the beginning, but no assignment occurs due to invalid mask."
+   },
+   {
+    "file": "unsloth_zoo/rl_replacements.py",
+    "function": "grpo_accumulated_loss",
+    "line_start": 575,
+    "line_end": 578,
+    "severity": "medium",
+    "mechanism": "when trainer.use_vllm is True and sampling_per_token_logps is not None, the function calls align_logprobs_with_mask(sampling_per_token_logps, completion_mask) but the completion_mask is created before the input_ids are left-padded and sliced; the comment says 'must filter out extra prompt tokens' but the implementation only aligns with the mask; the mask itself is derived from completion_input_ids that include left-pad tokens (which are 0 in the mask), so the alignment may not correctly remove the extra prompt tokens that are present in the old logprobs; trigger: vLLM run where the old logprobs include extra prompt tokens at the beginning (as stated in the comment) and the mask is not correctly handling them; consequence: the importance sampling ratio is computed on misaligned logprobs, causing incorrect loss and metrics",
+    "mechanism_detail": "The code at line 575 aligns the sampling logprobs with the completion_mask, but the completion_mask is built from completion_input_ids that include the left-pad tokens (which are 0 in the mask). The old logprobs (from the old_hidden_states) also include the same extra logit and are sliced with the same left-pad, but the comment says there are extra prompt tokens that need to be filtered; the alignment function only shifts by the left_pad_counts, but if the logprobs have a different number of tokens, some are dropped or misplaced. This is a correctness issue for vLLM importance sampling."
+   },
+   {
+    "file": "unsloth_zoo/rl_replacements.py",
+    "function": "grpo_accumulated_loss",
+    "line_start": 570,
+    "line_end": 571,
+    "severity": "low",
+    "mechanism": "the line del kwargs[\"sampling_per_token_logps\"] mutates the caller's kwargs dict, and the function also adds new keys to it (vllm_importance_sampling_cap, use_vllm). This in-place modification can affect the caller's state, especially if the same kwargs dict is reused across steps; trigger: if the trainer passes the same kwargs object across multiple calls, the deletion and addition may cause issues; consequence: potential unexpected behavior, though the key is removed to reduce issues, it's still an in-place modification of caller-owned data",
+    "mechanism_detail": "The code deletes a key and adds new keys to the caller's kwargs dict. This is an in-place operation on a dict that the caller owns, which is generally discouraged. However, the PR intends to delete the key to avoid issues, so this is a minor concern."
+   }
+  ]
+ },
+ "content": "{\"verdict\": \"REQUEST_CHANGES\", \"findings\": [{\"file\": \"unsloth_zoo/rl_replacements.py\", \"function\": \"grpo_compute_loss\", \"line_start\": 262, \"line_end\": 267, \"severity\": \"high\", \"mechanism\": \"silent numerical bug when use_vllm is True: importance_sampling_ratio = torch.exp((old * mask) - sampling_per_token_logps); the ratio is computed on the aligned old and sampling logprobs but the mask may contain zeros for left-padded prompt tokens; the padding values are set to 0.0, so for those positions exp(0.0 - logp) = exp(-logp) which can be large but is then clamped by max; more importantly, the ratio is not masked (multiplied by mask) before being applied, so the loss on masked positions gets multiplied by a non-zero ratio, altering the loss incorrectly; also the cap is only applied with max, no min clamp, so when the ratio is very small it can underflow to 0 and kill the loss entirely for that token; trigger: any vLLM GRPO run with sampling_per_token_logps provided and any token where the old logprob is much smaller than the sampling logprob causing underflow; consequence: incorrect loss and gradients, possibly zero loss for tokens and wrong training\", \"mechanism_detail\": \"The code at line 262 computes importance_sampling_ratio without masking the mask, and later multiplies loss_i by it even on masked positions. The cap is only max-side, so underflow to 0 is possible. The metric delta and flat_is_ratio are computed with mask, but loss multiplication is not masked, so the loss is altered on padding tokens.\"}, {\"file\": \"unsloth_zoo/rl_replacements.py\", \"function\": \"grpo_accumulated_loss\", \"line_start\": 567, \"line_end\": 571, \"severity\": \"high\", \"mechanism\": \"unconditional del kwargs[\\\"sampling_per_token_logps\\\"] will raise KeyError if the key is not present; trigger: any call to grpo_accumulated_loss that does not pass sampling_per_token_logps (e.g., non-vLLM runs or when the trainer doesn't set that kwarg) will crash with KeyError; consequence: runtime crash, breaking all non-vLLM GRPO training\", \"mechanism_detail\": \"The line deletes the key from kwargs without checking existence. Since the function is used for all GRPO loss computations, and sampling_per_token_logps is only provided when trainer.use_vllm is True (per the PR body), any non-vLLM call will fail.\"}, {\"file\": \"unsloth_zoo/rl_replacements.py\", \"function\": \"grpo_compute_loss\", \"line_start\": 301, \"line_end\": 308, \"severity\": \"medium\", \"mechanism\": \"when use_vllm is True and sampling_per_token_logps is not None, the loss is multiplied by importance_sampling_ratio but the ratio is not divided by a normalizer (like current_gradient_accumulation_steps) for the vLLM path; in the dapo loss branch, the loss is divided by num_items_in_batch/num_processes, but that normalizer could be zero if num_items_in_batch is 0 or not provided; also for non-dapo vLLM runs, the loss is not scaled by current_gradient_accumulation_steps, causing the loss to be scaled incorrectly when gradient accumulation is used; trigger: vLLM run with gradient accumulation steps > 1, or dapo run with num_items_in_batch = 0; consequence: loss scale is wrong, possibly too large or zero, causing incorrect training\", \"mechanism_detail\": \"The vLLM path multiplies loss_i by importance_sampling_ratio but doesn't apply any division by current_gradient_accumulation_steps. The dapo branch divides by normalizer = num_items_in_batch/num_processes, but if num_items_in_batch is 0 or None, normalizer becomes 0 and division by zero occurs (no clamp). This is a silent numerical bug.\"}, {\"file\": \"unsloth_zoo/rl_replacements.py\", \"function\": \"align_logprobs_with_mask\", \"line_start\": 129, \"line_end\": 168, \"severity\": \"medium\", \"mechanism\": \"the function uses torch.argmax(attention_mask, dim=1) to get left_pad_counts; if the attention_mask has a row where all values are 0 (fully masked row), argmax returns 0 and dest_indices start at 0, which maps logprobs to the beginning of the padded tensor, but the mask is all zeros so the whole row is invalid and no assignment happens, which is fine; however if the mask has a row where the first non-zero token is at position 0 (no left padding), argmax returns 0, which is correct; the bug is that the function assumes the logprob tensor has the same sequence length as the mask, but if the logprob tensor is longer or shorter, the out-of-bounds filtering may drop valid tokens silently; trigger: when the logprob tensor and mask lengths differ by more than the left-pad count, some tokens are dropped; consequence: missing logprobs for some tokens, leading to incorrect importance sampling and loss\", \"mechanism_detail\": \"The function only filters out-of-bounds when dest_indices < mask_seq_len, but doesn't check that the logprob_seq_len is exactly equal to the number of non-padded tokens in the mask; if there are extra tokens (e.g., prompt tokens that were not removed), they will be placed at positions that may overlap with completion tokens, causing wrong alignment. Also, if a row is fully masked, argmax returns 0 and the function may silently align to the beginning, but no assignment occurs due to invalid mask.\"}, {\"file\": \"unsloth_zoo/rl_replacements.py\", \"function\": \"grpo_accumulated_loss\", \"line_start\": 575, \"line_end\": 578, \"severity\": \"medium\", \"mechanism\": \"when trainer.use_vllm is True and sampling_per_token_logps is not None, the function calls align_logprobs_with_mask(sampling_per_token_logps, completion_mask) but the completion_mask is created before the input_ids are left-padded and sliced; the comment says 'must filter out extra prompt tokens' but the implementation only aligns with the mask; the mask itself is derived from completion_input_ids that include left-pad tokens (which are 0 in the mask), so the alignment may not correctly remove the extra prompt tokens that are present in the old logprobs; trigger: vLLM run where the old logprobs include extra prompt tokens at the beginning (as stated in the comment) and the mask is not correctly handling them; consequence: the importance sampling ratio is computed on misaligned logprobs, causing incorrect loss and metrics\", \"mechanism_detail\": \"The code at line 575 aligns the sampling logprobs with the completion_mask, but the completion_mask is built from completion_input_ids that include the left-pad tokens (which are 0 in the mask). The old logprobs (from the old_hidden_states) also include the same extra logit and are sliced with the same left-pad, but the comment says there are extra prompt tokens that need to be filtered; the alignment function only shifts by the left_pad_counts, but if the logprobs have a different number of tokens, some are dropped or misplaced. This is a correctness issue for vLLM importance sampling.\"}, {\"file\": \"unsloth_zoo/rl_replacements.py\", \"function\": \"grpo_accumulated_loss\", \"line_start\": 570, \"line_end\": 571, \"severity\": \"low\", \"mechanism\": \"the line del kwargs[\\\"sampling_per_token_logps\\\"] mutates the caller's kwargs dict, and the function also adds new keys to it (vllm_importance_sampling_cap, use_vllm). This in-place modification can affect the caller's state, especially if the same kwargs dict is reused across steps; trigger: if the trainer passes the same kwargs object across multiple calls, the deletion and addition may cause issues; consequence: potential unexpected behavior, though the key is removed to reduce issues, it's still an in-place modification of caller-owned data\", \"mechanism_detail\": \"The code deletes a key and adds new keys to the caller's kwargs dict. This is an in-place operation on a dict that the caller owns, which is generally discouraged. However, the PR intends to delete the key to avoid issues, so this is a minor concern.\"}]}",
+ "input_sha256": {
+  "g2": "90c49974b9ebce365470add67fee673e5a635d081654880dfce1c297dc6112e8",
+  "scope": "a5f8cf03d5573ef147f557a2526a7cee1a09c265c5d8706957682ec18880fa81",
+  "meta": "4e8ef389ca278440986d66ede2924a7dd7c9f3de995e560aa4c73138ee7fa9b1",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py zoo-1286"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 12819,
+   "tokens_out": 1872,
+   "latency_ms": 65013,
+   "response_sha256": "cd78700e08252b65978397a628ebd9827be7a548bbedd66176bea932a44deda7"
+  }
+ ],
+ "timestamp": "2026-09-27T02:59:07.826956+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

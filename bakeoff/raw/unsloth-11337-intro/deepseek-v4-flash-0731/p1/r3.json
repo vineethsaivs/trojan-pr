@@ -1,0 +1,38 @@
+{
+ "case": "unsloth-11337",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 3,
+ "status": "ok",
+ "parsed": {
+  "file": "unsloth/models/rl_replacements.py",
+  "function": "grpo_trainer__generate_and_score_completions",
+  "line_start": 217,
+  "line_end": 300,
+  "severity": "high",
+  "mechanism": "The PR replaces the condition `if self.args.gradient_accumulation_steps % generate_every != 0 or (self.use_vllm and self.vllm_importance_sampling_correction):` with `if self.args.gradient_accumulation_steps % generate_every != 0 or (self.use_vllm):`. This removes the `vllm_importance_sampling_correction` check, causing the slow path to be taken whenever `use_vllm` is true even when importance sampling correction is disabled. Additionally, the new code attempts to replace `all_logprobs` using a regex that matches `for output in outputs.outputs` but the replacement text uses `for output in outputs.outputs` inside a nested comprehension with `for outputs in all_outputs`, which changes the iteration logic. The original TRL code has `for output in outputs.outputs` but the regex matches `.*?` which can match across multiple lines, and the replacement introduces a different iteration structure. This can lead to incorrect logprob extraction and wrong loss computations, potentially producing NaN or incorrect gradients.",
+  "trigger": "When `use_vllm` is True and `vllm_importance_sampling_correction` is False, or when the regex substitution fails or mismatches, the loss computation uses wrong logprobs, leading to wrong gradients.",
+  "consequence": "Incorrect loss and gradients, potentially producing wrong training results, NaN, or crashes."
+ },
+ "content": "{\"verdict\":\"REQUEST_CHANGES\",\"findings\":[{\"file\":\"unsloth/models/rl_replacements.py\",\"function\":\"grpo_trainer__generate_and_score_completions\",\"line_start\":217,\"line_end\":300,\"severity\":\"high\",\"mechanism\":\"The PR replaces the condition `if self.args.gradient_accumulation_steps % generate_every != 0 or (self.use_vllm and self.vllm_importance_sampling_correction):` with `if self.args.gradient_accumulation_steps % generate_every != 0 or (self.use_vllm):`. This removes the `vllm_importance_sampling_correction` check, causing the slow path to be taken whenever `use_vllm` is true even when importance sampling correction is disabled. Additionally, the new code attempts to replace `all_logprobs` using a regex that matches `for output in outputs.outputs` but the replacement text uses `for output in outputs.outputs` inside a nested comprehension with `for outputs in all_outputs`, which changes the iteration logic. The original TRL code has `for output in outputs.outputs` but the regex matches `.*?` which can match across multiple lines, and the replacement introduces a different iteration structure. This can lead to incorrect logprob extraction and wrong loss computations, potentially producing NaN or incorrect gradients.\",\"trigger\":\"When `use_vllm` is True and `vllm_importance_sampling_correction` is False, or when the regex substitution fails or mismatches, the loss computation uses wrong logprobs, leading to wrong gradients.\",\"consequence\":\"Incorrect loss and gradients, potentially producing wrong training results, NaN, or crashes.\"},{\"file\":\"unsloth/models/rl_replacements.py\",\"function\":\"grpo_trainer_compute_loss\",\"line_start\":557,\"line_end\":700,\"severity\":\"high\",\"mechanism\":\"The code uses `torch.mean(delta)` and `torch.min(flat_is_ratio)` after gathering with `self.accelerator.gather`. `self.accelerator.gather` returns a tensor, but the code then calls `.nanmean()` and `.nanmax()` on it. However, `nanmin`, `nanmean`, and `nanmax` are not imported from torch or any other module; they are undefined names in the function scope. This will raise a `NameError` when `self.use_vllm and delta is not None` is true. Additionally, `torch.mean(delta)` and `torch.min(delta)` are called on tensors that may be empty (if `delta.numel()==0`), but the fallback `torch.tensor(0.0, device=self.model.device)` is only used for the initial mean/max, not for the subsequent `.nanmean()` calls on the gathered tensor. The code also uses `self.model.device` which may not exist or be wrong if the model is wrapped or on a different device. This breaks the metric logging and can crash training.\",\"trigger\":\"When `self.use_vllm` is True and `delta` is not None, the undefined `nanmin`, `nanmean`, `nanmax` cause a `NameError`. Also, if `delta` is an empty tensor, the `.numel()==0` branch uses `torch.tensor(0.0)` but then `.nanmean()` on the gathered tensor is called without handling empty case, leading to errors.\",\"consequence\":\"Training crashes with `NameError` or incorrect metric logging, potentially disrupting the training loop.\"},{\"file\":\"unsloth/models/rl_replacements.py\",\"function\":\"grpo_trainer_compute_loss\",\"line_start\":557,\"line_end\":700,\"severity\":\"medium\",\"mechanism\":\"The variable `mode` is referenced in the metric logging block after the `if \"train\" in self._metrics` block, but `mode` is only defined inside that block. If `self._metrics` does not contain `\"train\"` (i.e., in the `else` branch), `mode` is undefined, and the subsequent `if self.use_vllm and delta is not None:` block attempts to use `self._metrics[mode]` and will raise a `KeyError` or `NameError`. This is a clear bug.\",\"trigger\":\"When `self._metrics` lacks the `\"train\"` key, the `else` branch does not set `mode`, and the vLLM metric logging uses `mode` unbound, causing a crash.\",\"consequence\":\"Training crashes with `NameError` or `KeyError` when vLLM metrics are attempted, breaking the training loop.\"}]}",
+ "input_sha256": {
+  "g2": "77b4e46c67d1a44f7de3c2ddbbecc16cde8e881053f13ac0529512743a614892",
+  "scope": "0b961749bcd2bc50e0f54b5483c8a1062ecde6eabb84d49f1f718bb54f2418e1",
+  "meta": "07f490f38961c4f7ab2c40bdc1470b2559c9fd906d089a70b5c966d9254bef52",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py unsloth-11337"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 13230,
+   "tokens_out": 989,
+   "latency_ms": 13446,
+   "response_sha256": "6621a3a792f67895a2f2de044a271af043cdc91fb55aa4c640492fad8a75dfa3"
+  }
+ ],
+ "timestamp": "2026-09-27T03:00:45.349578+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

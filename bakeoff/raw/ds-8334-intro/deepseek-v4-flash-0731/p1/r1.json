@@ -1,0 +1,93 @@
+{
+ "case": "ds-8334",
+ "which": "intro",
+ "model": "deepseek-v4-flash-0731",
+ "prompt": "p1",
+ "run": 1,
+ "status": "ok",
+ "parsed": {
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "file": "deepspeed/runtime/data_pipeline/curriculum_scheduler.py",
+    "function": "__fixed_discrete_update_difficulty",
+    "line_start": 92,
+    "line_end": 97,
+    "severity": "high",
+    "mechanism": "Denominator can reach zero? No. But sentinel -1 can appear from config. The schedule config asserts difficulty and max_step lengths but does not validate difficulty values are positive integers. If difficulty[0] is -1, KeyError at runtime. Also if max_step is empty or difficulty missing, assertions catch. More importantly, if current_difficulty becomes a sentinel like None after a step, KeyError. The condition uses > s_state[0] which could be negative, causing immediate jump.",
+    "trigger": "If config['schedule_config']['max_step'][0] is a negative number, the condition global_steps > negative is true for global_steps >= 0, causing difficulty to increase immediately. If difficulty values are not integers (e.g., 1.0 vs 1), dictionary key lookup uses exact match, so if the config has [1.0, 2.0] but current_difficulty is set to 1 (int) from min_difficulty, KeyError. Also if max_step list is empty, assertion catches.",
+    "consequence": "KeyError or difficulty jumps to next value prematurely, leading to training with incorrect difficulty, possibly silent wrong results."
+   },
+   {
+    "file": "deepspeed/runtime/data_pipeline/curriculum_scheduler.py",
+    "function": "__fixed_root_update_difficulty",
+    "line_start": 100,
+    "line_end": 115,
+    "severity": "high",
+    "mechanism": "Denominator s_state['total_curriculum_step'] can be zero if config sets it to 0. Assertion only checks presence, not value > 0. Dividing by zero raises ZeroDivisionError, but if it is a float zero, it raises. However, if total_curriculum_step is zero, error. Also, difficulty_step can be zero, modulo by zero raises ZeroDivisionError. The floor and min clamp only one side (min with max, no floor), but floor is used. The root and power order is fine. For root_degree 1, it is linear.",
+    "trigger": "If user sets 'total_curriculum_step' to 0 in schedule_config, the division by zero causes ZeroDivisionError. If 'difficulty_step' set to 0, modulo by zero raises. Also, if global_steps is negative, the root of negative number yields a complex? But float negative to fractional power yields a complex? In Python, negative ** 0.5 raises ValueError. But global_steps is typically non-negative.",
+    "consequence": "Crash at runtime, or if error is caught by caller, training may use stale difficulty, leading to incorrect results."
+   },
+   {
+    "file": "deepspeed/runtime/data_pipeline/curriculum_scheduler.py",
+    "function": "__init__",
+    "line_start": 19,
+    "line_end": 88,
+    "severity": "medium",
+    "mechanism": "In fixed_discrete, the assertion for difficulty and max_step lengths is okay, but the schedule_config might be a list instead of dict? The code accesses config['schedule_config'] only if 'schedule_config' in config, but the assertion uses config['schedule_config'] after checking 'schedule_config' in config, but the check is in the elif branch, so it's okay. However, for fixed_root and fixed_linear, the schedule_config is assigned to self.state['schedule'] without deep copy, so caller can mutate it. Not a defect.",
+    "trigger": "No trigger.",
+    "consequence": "No defect."
+   },
+   {
+    "file": "deepspeed/runtime/data_pipeline/curriculum_scheduler.py",
+    "function": "update_difficulty",
+    "line_start": 117,
+    "line_end": 133,
+    "severity": "medium",
+    "mechanism": "The early exit if current_difficulty >= max_difficulty returns max_difficulty, but for fixed_discrete, if the schedule jumps to a difficulty greater than max_difficulty (e.g., difficulty list has a value larger than max_difficulty), then it will return that greater value. The min clamp is only in root, not in discrete. Also, for fixed_discrete, the schedule dictionary keys may be not monotonic, and the condition global_steps > s_state[0] might be true for multiple steps, but it only jumps one step per call, so it's okay. However, if current_difficulty is a value not in schedule (e.g., min_difficulty is 0 but difficulty list starts at 1), KeyError.",
+    "trigger": "If in fixed_discrete the difficulty list contains a value larger than max_difficulty, the update returns a value exceeding max_difficulty, causing training to use a difficulty outside the intended range. If difficulty list does not include the min_difficulty value, KeyError at runtime.",
+    "consequence": "Training uses a difficulty outside the configured min/max range, possibly causing wrong results or crash."
+   },
+   {
+    "file": "deepspeed/runtime/data_pipeline/curriculum_scheduler.py",
+    "function": "__fixed_root_update_difficulty",
+    "line_start": 100,
+    "line_end": 115,
+    "severity": "medium",
+    "mechanism": "The floor and modulo with negative values: if next_difficulty is negative (e.g., if global_steps is negative or min_difficulty is negative), then the floor and modulo can produce a negative difficulty. For example, if min_difficulty is -10 and max_difficulty 10, then at global_steps=0, next_difficulty = floor(0) = 0, then + min_difficulty = -10, then floor? Actually it computes floor(next_difficulty*(max-min)+min), so for global_steps=0, next_difficulty = 0, then floor(0*(20)+(-10)) = floor(-10) = -10, then next_difficulty % 8 for -10 gives 6 (since -10 % 8 = 6), so next_difficulty -= 6 gives -16, then min(-16,10) = -16. This is a negative difficulty. However, min_difficulty is often positive, but not enforced.",
+    "trigger": "If min_difficulty is negative (e.g., -10), at global_steps=0 the computed difficulty becomes -16, which is below the min_difficulty. The clamp only has min with max, no floor with min. This leads to difficulty below the configured minimum, causing incorrect training.",
+    "consequence": "Training with difficulty below the minimum, causing wrong results."
+   },
+   {
+    "file": "deepspeed/runtime/data_pipeline/curriculum_scheduler.py",
+    "function": "__init__",
+    "line_start": 19,
+    "line_end": 88,
+    "severity": "low",
+    "mechanism": "The fixed_discrete branch does not validate that the difficulty values are monotonic increasing or that the max_step values are positive. But not critical.",
+    "trigger": "No trigger.",
+    "consequence": "No defect."
+   }
+  ]
+ },
+ "content": "{\"verdict\":\"REQUEST_CHANGES\",\"findings\":[{\"file\":\"deepspeed/runtime/data_pipeline/curriculum_scheduler.py\",\"function\":\"__fixed_discrete_update_difficulty\",\"line_start\":92,\"line_end\":97,\"severity\":\"high\",\"mechanism\":\"Denominator can reach zero? No. But sentinel -1 can appear from config. The schedule config asserts difficulty and max_step lengths but does not validate difficulty values are positive integers. If difficulty[0] is -1, KeyError at runtime. Also if max_step is empty or difficulty missing, assertions catch. More importantly, if current_difficulty becomes a sentinel like None after a step, KeyError. The condition uses > s_state[0] which could be negative, causing immediate jump.\",\"trigger\":\"If config['schedule_config']['max_step'][0] is a negative number, the condition global_steps > negative is true for global_steps >= 0, causing difficulty to increase immediately. If difficulty values are not integers (e.g., 1.0 vs 1), dictionary key lookup uses exact match, so if the config has [1.0, 2.0] but current_difficulty is set to 1 (int) from min_difficulty, KeyError. Also if max_step list is empty, assertion catches.\",\"consequence\":\"KeyError or difficulty jumps to next value prematurely, leading to training with incorrect difficulty, possibly silent wrong results.\"},{\"file\":\"deepspeed/runtime/data_pipeline/curriculum_scheduler.py\",\"function\":\"__fixed_root_update_difficulty\",\"line_start\":100,\"line_end\":115,\"severity\":\"high\",\"mechanism\":\"Denominator s_state['total_curriculum_step'] can be zero if config sets it to 0. Assertion only checks presence, not value > 0. Dividing by zero raises ZeroDivisionError, but if it is a float zero, it raises. However, if total_curriculum_step is zero, error. Also, difficulty_step can be zero, modulo by zero raises ZeroDivisionError. The floor and min clamp only one side (min with max, no floor), but floor is used. The root and power order is fine. For root_degree 1, it is linear.\",\"trigger\":\"If user sets 'total_curriculum_step' to 0 in schedule_config, the division by zero causes ZeroDivisionError. If 'difficulty_step' set to 0, modulo by zero raises. Also, if global_steps is negative, the root of negative number yields a complex? But float negative to fractional power yields a complex? In Python, negative ** 0.5 raises ValueError. But global_steps is typically non-negative.\",\"consequence\":\"Crash at runtime, or if error is caught by caller, training may use stale difficulty, leading to incorrect results.\"},{\"file\":\"deepspeed/runtime/data_pipeline/curriculum_scheduler.py\",\"function\":\"__init__\",\"line_start\":19,\"line_end\":88,\"severity\":\"medium\",\"mechanism\":\"In fixed_discrete, the assertion for difficulty and max_step lengths is okay, but the schedule_config might be a list instead of dict? The code accesses config['schedule_config'] only if 'schedule_config' in config, but the assertion uses config['schedule_config'] after checking 'schedule_config' in config, but the check is in the elif branch, so it's okay. However, for fixed_root and fixed_linear, the schedule_config is assigned to self.state['schedule'] without deep copy, so caller can mutate it. Not a defect.\",\"trigger\":\"No trigger.\",\"consequence\":\"No defect.\"},{\"file\":\"deepspeed/runtime/data_pipeline/curriculum_scheduler.py\",\"function\":\"update_difficulty\",\"line_start\":117,\"line_end\":133,\"severity\":\"medium\",\"mechanism\":\"The early exit if current_difficulty >= max_difficulty returns max_difficulty, but for fixed_discrete, if the schedule jumps to a difficulty greater than max_difficulty (e.g., difficulty list has a value larger than max_difficulty), then it will return that greater value. The min clamp is only in root, not in discrete. Also, for fixed_discrete, the schedule dictionary keys may be not monotonic, and the condition global_steps > s_state[0] might be true for multiple steps, but it only jumps one step per call, so it's okay. However, if current_difficulty is a value not in schedule (e.g., min_difficulty is 0 but difficulty list starts at 1), KeyError.\",\"trigger\":\"If in fixed_discrete the difficulty list contains a value larger than max_difficulty, the update returns a value exceeding max_difficulty, causing training to use a difficulty outside the intended range. If difficulty list does not include the min_difficulty value, KeyError at runtime.\",\"consequence\":\"Training uses a difficulty outside the configured min/max range, possibly causing wrong results or crash.\"},{\"file\":\"deepspeed/runtime/data_pipeline/curriculum_scheduler.py\",\"function\":\"__fixed_root_update_difficulty\",\"line_start\":100,\"line_end\":115,\"severity\":\"medium\",\"mechanism\":\"The floor and modulo with negative values: if next_difficulty is negative (e.g., if global_steps is negative or min_difficulty is negative), then the floor and modulo can produce a negative difficulty. For example, if min_difficulty is -10 and max_difficulty 10, then at global_steps=0, next_difficulty = floor(0) = 0, then + min_difficulty = -10, then floor? Actually it computes floor(next_difficulty*(max-min)+min), so for global_steps=0, next_difficulty = 0, then floor(0*(20)+(-10)) = floor(-10) = -10, then next_difficulty % 8 for -10 gives 6 (since -10 % 8 = 6), so next_difficulty -= 6 gives -16, then min(-16,10) = -16. This is a negative difficulty. However, min_difficulty is often positive, but not enforced.\",\"trigger\":\"If min_difficulty is negative (e.g., -10), at global_steps=0 the computed difficulty becomes -16, which is below the min_difficulty. The clamp only has min with max, no floor with min. This leads to difficulty below the configured minimum, causing incorrect training.\",\"consequence\":\"Training with difficulty below the minimum, causing wrong results.\"},{\"file\":\"deepspeed/runtime/data_pipeline/curriculum_scheduler.py\",\"function\":\"__init__\",\"line_start\":19,\"line_end\":88,\"severity\":\"low\",\"mechanism\":\"The fixed_discrete branch does not validate that the difficulty values are monotonic increasing or that the max_step values are positive. But not critical.\",\"trigger\":\"No trigger.\",\"consequence\":\"No defect.\"}]}",
+ "input_sha256": {
+  "g2": "7d8f8337cab6c0f60b05acafc2896206d6785d217ab528ffe449750a280ac793",
+  "scope": "0aaa38d73d6c7c0c07114bba97f1878a578c89d42e6b87bbeee18840fee18874",
+  "meta": "cfd774011be1b3286a6b0b577e12c8d7ff84a442ad5e5d35dd69b2a826758636",
+  "fetch_cmd": "python bakeoff/fetch_inputs.py ds-8334"
+ },
+ "calls": [
+  {
+   "role": "reviewer",
+   "model": "deepseek-v4-flash-0731",
+   "tokens_in": 3958,
+   "tokens_out": 1481,
+   "latency_ms": 33736,
+   "response_sha256": "c38ed7a4b55da7af75638115ab4793ef38d5e35d8e806fcc8f10b70d6314e8c3"
+  }
+ ],
+ "timestamp": "2026-09-27T02:58:20.189460+00:00",
+ "git_sha": "278d1e76da652304587a4f6783a50864320545d7",
+ "max_tokens": 8000
+}

@@ -18,3 +18,13 @@ deploy-control:
 	ssh pl-control 'cp /opt/plumbline/infra/systemd/plumbline-*.service /etc/systemd/system/ && systemctl daemon-reload && systemctl enable -q plumbline-judge plumbline-ops && systemctl restart plumbline-judge plumbline-ops'
 
 .PHONY: deploy-sandbox deploy-control
+
+numbers:
+	rsync -az pl-control:/opt/plumbline/eval/game.jsonl eval/
+	rsync -az pl-control:/opt/plumbline/bakeoff/raw bakeoff/
+	scp -q plumbline/numbers.py pl-control:/opt/plumbline/plumbline/numbers.py
+	ssh pl-control 'cd /opt/plumbline && .venv/bin/python -m plumbline.numbers export' > results/sentinel_eval.json
+	.venv/bin/python bakeoff/score.py
+	.venv/bin/python -m plumbline.numbers numbers
+
+.PHONY: numbers
