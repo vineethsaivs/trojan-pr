@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "plumbline/plan/1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "declared_behavior_change", "checks"],
+  "properties": {
+    "summary": {"type": "string", "maxLength": 400},
+    "declared_behavior_change": {"type": "boolean"},
+    "checks": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"$ref": "#/$defs/check"}}
+  },
+  "$defs": {
+    "sym": {"type": "string", "pattern": "^[A-Za-z0-9_./-]+\\.py:[A-Za-z_][A-Za-z0-9_.]*$", "maxLength": 200},
+    "num": {"type": "number", "minimum": -1e6, "maximum": 1e6},
+    "arg": {
+      "oneOf": [
+        {"type": "object", "additionalProperties": false, "required": ["tensor"], "properties": {"tensor": {
+          "type": "object", "additionalProperties": false, "required": ["shape"],
+          "properties": {
+            "shape": {"type": "array", "items": {"type": "integer", "minimum": 0, "maximum": 512}, "maxItems": 4},
+            "dist": {"enum": ["randn", "rand", "zeros", "ones", "arange", "const"]},
+            "value": {"$ref": "#/$defs/num"},
+            "dtype": {"enum": ["float64", "float32", "float16", "bfloat16", "int64", "bool"]},
+            "seed": {"type": "integer", "minimum": 0, "maximum": 1000},
+            "scaled": {"type": "boolean"},
+            "requires_grad": {"type": "boolean"}}}}},
+        {"type": "object", "additionalProperties": false, "required": ["list"], "properties": {"list": {
+          "type": "object", "additionalProperties": false, "required": ["n"],
+          "properties": {"n": {"type": "integer", "minimum": 0, "maximum": 4096},
+                         "dist": {"enum": ["randn", "arange", "const", "empty_strings"]},
+                         "value": {"$ref": "#/$defs/num"}}}}},
+        {"type": "object", "additionalProperties": false, "required": ["float"], "properties": {"float": {"$ref": "#/$defs/num"}}},
+        {"type": "object", "additionalProperties": false, "required": ["int"], "properties": {"int": {"type": "integer", "minimum": -1000000, "maximum": 1000000}}},
+        {"type": "object", "additionalProperties": false, "required": ["str"], "properties": {"str": {"type": "string", "pattern": "^[A-Za-z0-9_.-]{0,64}$"}}},
+        {"type": "object", "additionalProperties": false, "required": ["bool"], "properties": {"bool": {"type": "boolean"}}},
+        {"type": "object", "additionalProperties": false, "required": ["none"], "properties": {"none": {"const": true}}},
+        {"type": "object", "additionalProperties": false, "required": ["sweep"], "properties": {"sweep": {"const": true}}},
+        {"type": "object", "additionalProperties": false, "required": ["dict"], "properties": {"dict": {
+          "type": "object", "maxProperties": 16, "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]{0,40}$"},
+          "additionalProperties": {"$ref": "#/$defs/arg"}}}}
+      ]
+    },
+    "call": {
+      "type": "object", "additionalProperties": false, "required": ["target"],
+      "properties": {
+        "target": {"$ref": "#/$defs/sym"},
+        "construct": {"type": "object", "maxProperties": 16, "additionalProperties": {"$ref": "#/$defs/arg"}},
+        "method": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,60}$"},
+        "set_attr": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,60}$"},
+        "args": {"type": "array", "maxItems": 8, "items": {"$ref": "#/$defs/arg"}},
+        "kwargs": {"type": "object", "maxProperties": 16, "additionalProperties": {"$ref": "#/$defs/arg"}},
+        "output": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 16}, {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,40}$"}]}
+      }
+    },
+    "sweep": {"type": "object", "additionalProperties": false, "required": ["start", "stop"],
+      "properties": {"start": {"type": "integer", "minimum": -10000, "maximum": 100000},
+                     "stop": {"type": "integer", "minimum": -10000, "maximum": 100000},
+                     "step": {"type": "integer", "minimum": 1, "maximum": 10000},
+                     "values": {"type": "array", "items": {"$ref": "#/$defs/num"}, "maxItems": 64}}},
+    "bound": {"oneOf": [{"$ref": "#/$defs/num"}, {"type": "object", "additionalProperties": false, "required": ["config"],
+      "properties": {"config": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_.]{0,60}$"}}}]},
+    "check": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "family", "adapter", "call", "params", "why"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^c[0-9]{1,2}$"},
+        "family": {"enum": ["ga_invariance", "dtype_shadow", "decomposition", "bounds", "monotonic", "no_mutation",
+                            "finite_extremes", "config_audit", "reference", "edge_sweep"]},
+        "adapter": {"enum": ["call", "grad_norm", "lr_schedule", "loss_module", "train_step", "optimizer_groups", "batch_fn"]},
+        "call": {"$ref": "#/$defs/call"},
+        "pattern": {"enum": ["zero_denominator", "power_root_order", "overflow", "narrowing_cast", "sentinel_survives",
+                             "one_sided_clamp", "shape_from_index0", "in_place_mutation", "empty_reduction",
+                             "flag_before_assign", "grad_accum", "param_groups", "lr_schedule", "none"]},
+        "why": {"type": "string", "maxLength": 240},
+        "params": {"type": "object"}
+      },
+      "allOf": [
+        {"if": {"properties": {"family": {"const": "ga_invariance"}}}, "then": {"properties": {"params": {
+          "type": "object", "additionalProperties": false, "required": ["micro", "accum"],
+          "properties": {"micro": {"type": "integer", "minimum": 1, "maximum": 8},
+                         "accum": {"type": "integer", "minimum": 2, "maximum": 8},
+                         "ragged_mask": {"type": "boolean"}}}}}},
+        {"if": {"properties": {"family": {"const": "dtype_shadow"}}}, "then": {"properties": {"params": {
+          "type": "object", "additionalProperties": false, "required": ["target_dtype"],
+          "properties": {"target_dtype": {"enum": ["float32", "float16", "bfloat16", "int"]},
+                         "n_accum": {"type": "integer", "minimum": 1, "maximum": 10000000},
+                         "safety": {"type": "number", "minimum": 2, "maximum": 32}}}}}},
+        {"if": {"properties": {"family": {"const": "decomposition"}}}, "then": {"properties": {"params": {
+          "type": "object", "additionalProperties": false, "required": ["pieces", "combine"],
+          "properties": {"pieces": {"type": "integer", "minimum": 2, "maximum": 16},
+                         "combine": {"enum": ["same", "sum", "mean_by_count", "pnorm"]},
+                         "p": {"type": "array", "items": {"type": "number", "minimum": 1, "maximum": 8}, "minItems": 1, "maxItems": 4}}}}}},
+        {"if": {"properties": {"family": {"enum": ["bounds", "monotonic"]}}}, "then": {"properties": {"params": {
+          "type": "object", "additionalProperties": false, "required": ["sweep"],
+          "properties": {"sweep": {"$ref": "#/$defs/sweep"},
+                         "lo": {"$ref": "#/$defs/bound"}, "hi": {"$ref": "#/$defs/bound"},
+                         "direction": {"enum": ["nonincreasing", "nondecreasing"]},
+                         "config": {"type": "object", "maxProperties": 16, "additionalProperties": {"$ref": "#/$defs/arg"}}}}}}},
+        {"if": {"properties": {"family": {"const": "no_mutation"}}}, "then": {"properties": {"params": {
+          "type": "object", "additionalProperties": false, "properties": {"check_aliasing": {"type": "boolean"}}}}}},
+        {"if": {"properties": {"family": {"const": "finite_extremes"}}}, "then": {"properties": {"params": {
+          "type": "object", "additionalProperties": false, "required": ["scales", "expect"],
+          "properties": {"scales": {"type": "array", "items": {"type": "number", "minimum": 1e-6, "maximum": 1e6}, "minItems": 2, "maxItems": 6},
+                         "expect": {"enum": ["finite", "finite_nonzero", "scale_invariant"]},
+                         "backward": {"type": "boolean"}}}}}},
+        {"if": {"properties": {"family": {"const": "config_audit"}}}, "then": {"properties": {"params": {
+          "type": "object", "additionalProperties": false, "required": ["rules"],
+          "properties": {"rules": {"type": "array", "minItems": 1, "items": {"enum": ["each_param_once", "lr_matches_config", "decay_rule_ndim", "no_decay_on_norm_and_bias"]}}}}}}},
+        {"if": {"properties": {"family": {"const": "reference"}}}, "then": {"properties": {"params": {
+          "type": "object", "additionalProperties": false, "required": ["ref", "cases"],
+          "properties": {"ref": {"enum": ["torch.clip_grad_norm_", "broadcast_numel", "cross_entropy_ignore_index", "k3_kl_float64", "softplus_float64", "logsumexp_float64", "adamw_step", "cosine_lr"]},
+                         "cases": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"type": "object", "maxProperties": 8, "additionalProperties": {"$ref": "#/$defs/arg"}}}}}}}},
+        {"if": {"properties": {"family": {"const": "edge_sweep"}}}, "then": {"properties": {"params": {
+          "type": "object", "additionalProperties": false, "required": ["edges"],
+          "properties": {"edges": {"type": "array", "minItems": 1, "items": {"enum": ["batch_1", "empty", "all_masked", "all_empty_strings", "warmup_eq_total", "zero_steps", "single_token", "past_end"]}}}}}}}
+      ]
+    }
+  }
+}

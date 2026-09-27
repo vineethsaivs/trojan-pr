@@ -1,0 +1,7 @@
+id: deepspeed-8533
+repo: https://github.com/deepspeedai/DeepSpeed
+upstream_pr: https://github.com/deepspeedai/DeepSpeed/pull/8533
+buggy_sha: 0d4aa274731857561ebb479552d4223a99a0cedc
+fixed_sha: 1663b5b59aaf58ec6accb1aca326e120e6b1c279
+scope: deepspeed/runtime/zero/muon/original_muon.py
+pattern: early_narrowing

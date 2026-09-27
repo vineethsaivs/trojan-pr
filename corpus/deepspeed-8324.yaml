@@ -1,0 +1,7 @@
+id: deepspeed-8324
+repo: https://github.com/deepspeedai/DeepSpeed
+upstream_pr: https://github.com/deepspeedai/DeepSpeed/pull/8324
+buggy_sha: 7fabe4735f6d59834ac576c79ef69f50004690e4
+fixed_sha: b8bfd260465b05a22009c0d23a17646cf57fd156
+scope: deepspeed/profiling/flops_profiler/profiler.py
+pattern: shape_from_index0

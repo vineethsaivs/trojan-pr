@@ -1,0 +1,7 @@
+id: st-4012
+repo: https://github.com/huggingface/sentence-transformers
+upstream_pr: https://github.com/huggingface/sentence-transformers/pull/4012
+buggy_sha: 0e6ef6564c036967b86f1dc653155cb53ad8eb7f
+fixed_sha: 94d68cf9cca6498d54e4c0d3f84532cbd33a7a9f
+scope: sentence_transformers/cross_encoder/losses/plist_mle.py
+pattern: overflow

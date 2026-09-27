@@ -1,0 +1,25 @@
+  fd1d2c64 review_example rank0  O2 straggler n/a (no show_straggler)            O1 no-mutation FAIL (latencies after: [0.1, 0.5])
+  fd1d2c64 review_example rank1  O2 straggler n/a (no show_straggler)            O1 no-mutation FAIL (latencies after: [0.1, 0.9])
+  fd1d2c64 pr_body_4op    rank0  O2 straggler n/a (no show_straggler)            O1 no-mutation FAIL (latencies after: [1.29, 1.6, 2.3, 3.6])
+  fd1d2c64 pr_body_4op    rank1  O2 straggler n/a (no show_straggler)            O1 no-mutation FAIL (latencies after: [1.23, 2.46, 3.03, 3.14])
+pre-intro #3579^   fd1d2c64: FAIL (expected FAIL)
+
+  5d1124f2 review_example rank0  O2 straggler got=0.0000 want=0.4000 FAIL        O1 no-mutation FAIL (latencies after: [0.1, 0.5])
+  5d1124f2 review_example rank1  O2 straggler got=0.4000 want=0.8000 FAIL        O1 no-mutation FAIL (latencies after: [0.1, 0.9])
+  5d1124f2 pr_body_4op    rank0  O2 straggler got=0.5200 want=2.3700 FAIL        O1 no-mutation FAIL (latencies after: [1.29, 1.6, 2.3, 3.6])
+  5d1124f2 pr_body_4op    rank1  O2 straggler got=1.5900 want=3.4400 FAIL        O1 no-mutation FAIL (latencies after: [1.23, 2.46, 3.03, 3.14])
+intro #3579        5d1124f2: FAIL (expected FAIL)
+
+  e1d6b4fe review_example rank0  O2 straggler got=0.0000 want=0.4000 FAIL        O1 no-mutation FAIL (latencies after: [0.1, 0.5])
+  e1d6b4fe review_example rank1  O2 straggler got=0.4000 want=0.8000 FAIL        O1 no-mutation FAIL (latencies after: [0.1, 0.9])
+  e1d6b4fe pr_body_4op    rank0  O2 straggler got=0.5200 want=2.3700 FAIL        O1 no-mutation FAIL (latencies after: [1.29, 1.6, 2.3, 3.6])
+  e1d6b4fe pr_body_4op    rank1  O2 straggler got=1.5900 want=3.4400 FAIL        O1 no-mutation FAIL (latencies after: [1.23, 2.46, 3.03, 3.14])
+fix parent         e1d6b4fe: FAIL (expected FAIL)
+
+  b8b44809 review_example rank0  O2 straggler got=0.4000 want=0.4000 PASS        O1 no-mutation PASS (latencies after: [0.5, 0.1])
+  b8b44809 review_example rank1  O2 straggler got=0.8000 want=0.8000 PASS        O1 no-mutation PASS (latencies after: [0.1, 0.9])
+  b8b44809 pr_body_4op    rank0  O2 straggler got=2.3700 want=2.3700 PASS        O1 no-mutation PASS (latencies after: [2.3, 1.6, 3.6, 1.29])
+  b8b44809 pr_body_4op    rank1  O2 straggler got=3.4400 want=3.4400 PASS        O1 no-mutation PASS (latencies after: [3.14, 2.46, 1.23, 3.03])
+fix #8199          b8b44809: PASS (expected PASS)
+
+ALL AS EXPECTED

@@ -1,0 +1,41 @@
+transformers optimizer_kwargs for adamw_torch: ['betas', 'eps', 'lr']
+pre-intro dde6a0f0: N/A, unsloth/trainer.py and embedding_learning_rate do not exist yet
+Unsloth: Setting lr = 1.00e-04 instead of 1.00e-03 for embed.
+intro 72b19da6 (PR #506)
+  proj.weight                            got 1.00000000 want 0.99990000 FAIL
+  proj.bias                              got 1.00000000 want 1.00000000 ok
+  norm.weight                            got 1.00000000 want 1.00000000 ok
+  norm.bias                              got 1.00000000 want 1.00000000 ok
+  embed.modules_to_save.default.weight   got 1.00000000 want 0.99999000 FAIL
+  param_group weight_decay: [0.0, 0.0]
+  VERDICT: FAIL
+Unsloth: Setting lr = 1.00e-04 instead of 1.00e-03 for embed.
+fix parent bbfabb2e
+  proj.weight                            got 1.00000000 want 0.99990000 FAIL
+  proj.bias                              got 1.00000000 want 1.00000000 ok
+  norm.weight                            got 1.00000000 want 1.00000000 ok
+  norm.bias                              got 1.00000000 want 1.00000000 ok
+  embed.modules_to_save.default.weight   got 1.00000000 want 0.99999000 FAIL
+  param_group weight_decay: [0.0, 0.0]
+  VERDICT: FAIL
+Unsloth: Setting lr = 1.00e-04 instead of 1.00e-03 for embed.
+fix ed004ac7 (PR #11470)
+  proj.weight                            got 0.99989998 want 0.99990000 ok
+  proj.bias                              got 1.00000000 want 1.00000000 ok
+  norm.weight                            got 1.00000000 want 1.00000000 ok
+  norm.bias                              got 1.00000000 want 1.00000000 ok
+  embed.modules_to_save.default.weight   got 0.99998999 want 0.99999000 ok
+  param_group weight_decay: [0.1, 0.0, 0.1]
+  VERDICT: PASS
+control: stock HF Trainer.create_optimizer (no embedding lr)
+  proj.weight                            got 0.99989998 want 0.99990000 ok
+  proj.bias                              got 1.00000000 want 1.00000000 ok
+  norm.weight                            got 1.00000000 want 1.00000000 ok
+  norm.bias                              got 1.00000000 want 1.00000000 ok
+  embed.modules_to_save.default.weight   got 0.99989998 want 0.99990000 ok
+  param_group weight_decay: [0.1, 0.0]
+  VERDICT: PASS
+ORACLE SEPARATES BUGGY FROM FIXED: True
+real 6.22
+user 2.67
+sys 1.04

@@ -1,0 +1,7 @@
+id: deepspeed-8334
+repo: https://github.com/deepspeedai/DeepSpeed
+upstream_pr: https://github.com/deepspeedai/DeepSpeed/pull/8334
+buggy_sha: c7eed1594d3de902796cf81ce6e7b84efe5979d8
+fixed_sha: 8e09ed2acde363d5efcf3577f9586e9f4fcba672
+scope: deepspeed/runtime/data_pipeline/curriculum_scheduler.py
+pattern: one_sided_clamp

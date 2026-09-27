@@ -1,0 +1,7 @@
+id: unsloth-7872
+repo: https://github.com/unslothai/unsloth
+upstream_pr: https://github.com/unslothai/unsloth/pull/7872
+buggy_sha: dbd5a9f2dba3d589ad1eb41cbfba540b607f54a2
+fixed_sha: 3c5e5ca71dd5be91689edd3bca43a106d512cd7c
+scope: unsloth/dataprep/raw_text.py
+pattern: sentinel_survives

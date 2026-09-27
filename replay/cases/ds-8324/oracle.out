@@ -1,0 +1,35 @@
+== pre-intro (parent of #1591) 7f58853
+   N/A: _elementwise_flops_compute does not exist (torch.mul/add not counted at this SHA)
+== introducing #1591 082f392
+          (2, 3, 4) op (4,)       want=         24 got=           48 swap=           48 pad=           24 ratio=2 FAIL
+               (8,) op (2, 8)     want=         16 got=           64 swap=           64 pad=           64 ratio=4 FAIL
+             (3, 1) op (5,)       want=         15 got=            5 swap=            5 pad=           15 ratio=0.3333 FAIL
+    (32, 128, 4096) op (4096,)    want= 16,777,216 got=2,147,483,648 swap=2,147,483,648 pad=   16,777,216 ratio=128 FAIL
+       (32, 128, 1) op (4096,)    want= 16,777,216 got=      524,288 swap=      524,288 pad=   16,777,216 ratio=0.03125 FAIL
+          (2, 3, 4) op (2, 3, 4)  want=         24 got=           24 swap=           24 pad=           24 ratio=1 PASS
+          (4, 1, 7) op (1, 5, 7)  want=        140 got=          140 swap=          140 pad=          140 ratio=1 PASS
+              (16,) op (32, 16)   want=        512 got=          512 swap=          512 pad=          512 ratio=1 PASS
+   -> FAIL (5/8 cases)
+== fix parent 7fabe47
+          (2, 3, 4) op (4,)       want=         24 got=           48 swap=           48 pad=           24 ratio=2 FAIL
+               (8,) op (2, 8)     want=         16 got=           64 swap=           64 pad=           64 ratio=4 FAIL
+             (3, 1) op (5,)       want=         15 got=            5 swap=            5 pad=           15 ratio=0.3333 FAIL
+    (32, 128, 4096) op (4096,)    want= 16,777,216 got=2,147,483,648 swap=2,147,483,648 pad=   16,777,216 ratio=128 FAIL
+       (32, 128, 1) op (4096,)    want= 16,777,216 got=      524,288 swap=      524,288 pad=   16,777,216 ratio=0.03125 FAIL
+          (2, 3, 4) op (2, 3, 4)  want=         24 got=           24 swap=           24 pad=           24 ratio=1 PASS
+          (4, 1, 7) op (1, 5, 7)  want=        140 got=          140 swap=          140 pad=          140 ratio=1 PASS
+              (16,) op (32, 16)   want=        512 got=          512 swap=          512 pad=          512 ratio=1 PASS
+   -> FAIL (5/8 cases)
+== fix #8324 b8bfd26
+          (2, 3, 4) op (4,)       want=         24 got=           24 swap=           24 pad=           24 ratio=1 PASS
+               (8,) op (2, 8)     want=         16 got=           16 swap=           16 pad=           16 ratio=1 PASS
+             (3, 1) op (5,)       want=         15 got=           15 swap=           15 pad=           15 ratio=1 PASS
+    (32, 128, 4096) op (4096,)    want= 16,777,216 got=   16,777,216 swap=   16,777,216 pad=   16,777,216 ratio=1 PASS
+       (32, 128, 1) op (4096,)    want= 16,777,216 got=   16,777,216 swap=   16,777,216 pad=   16,777,216 ratio=1 PASS
+          (2, 3, 4) op (2, 3, 4)  want=         24 got=           24 swap=           24 pad=           24 ratio=1 PASS
+          (4, 1, 7) op (1, 5, 7)  want=        140 got=          140 swap=          140 pad=          140 ratio=1 PASS
+              (16,) op (32, 16)   want=        512 got=          512 swap=          512 pad=          512 ratio=1 PASS
+   -> PASS
+
+SUMMARY: {"pre-intro (parent of #1591)": "N/A", "introducing #1591": "FAIL (5/8 cases)", "fix parent": "FAIL (5/8 cases)", "fix #8324": "PASS"}
+ORACLE BEHAVES AS EXPECTED (fails on bug, passes on fix): True

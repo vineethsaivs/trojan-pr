@@ -1,0 +1,7 @@
+id: zoo-1240
+repo: https://github.com/unslothai/unsloth-zoo
+upstream_pr: https://github.com/unslothai/unsloth-zoo/pull/1240
+buggy_sha: 17d7f22fd8d21b2981e7948cf154dbf489a975bd
+fixed_sha: ba721e43c0573a13d1ca74fda57b1dccb8113185
+scope: unsloth_zoo/rl_replacements.py
+pattern: precision

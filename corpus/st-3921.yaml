@@ -1,0 +1,7 @@
+id: st-3921
+repo: https://github.com/huggingface/sentence-transformers
+upstream_pr: https://github.com/huggingface/sentence-transformers/pull/3921
+buggy_sha: b806a61ab679f44beaf83e658b4d1b7176f62e39
+fixed_sha: 655121f9be2d2caac1cb7859ff62340cc9878258
+scope: sentence_transformers/sentence_transformer/losses/global_orthogonal_regularization.py
+pattern: zero_denominator

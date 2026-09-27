@@ -1,0 +1,45 @@
+== pre-intro  504893a (parent of #1307): curriculum_scheduler.py does not exist (404), no pre-introduction control
+  VERDICT N/A (expected N/A) OK
+== introduce  b2b34ae (#1307)
+  min=8   step=16  fixed_linear d[0:4]=[0, 16, 16, 32] FAIL BOUND t=0 d=0 < min=8 (1 steps)
+  min=8   step=16  fixed_root   d[0:4]=[0, 96, 144, 176] FAIL BOUND t=0 d=0 < min=8 (1 steps)
+  min=1   step=8   fixed_linear d[0:4]=[0, 8, 16, 24] FAIL BOUND t=0 d=0 < min=1 (1 steps)
+  min=1   step=8   fixed_root   d[0:4]=[0, 96, 144, 176] FAIL BOUND t=0 d=0 < min=1 (1 steps)
+  min=10  step=8   fixed_linear d[0:4]=[8, 16, 24, 40] FAIL BOUND t=0 d=8 < min=10 (1 steps)
+  min=10  step=8   fixed_root   d[0:4]=[8, 104, 152, 184] FAIL BOUND t=0 d=8 < min=10 (1 steps)
+  min=8   step=8   fixed_linear d[0:4]=[8, 16, 24, 32] PASS
+  min=8   step=8   fixed_root   d[0:4]=[8, 104, 144, 176] PASS
+  min=64  step=16  fixed_linear d[0:4]=[64, 64, 80, 80] PASS
+  min=64  step=16  fixed_root   d[0:4]=[64, 160, 192, 224] PASS
+  trigger configs failing: 6/6, benign false positives: 0/4
+  tutorial (min=8 step=16 T=15000): optimizer steps with d < min = 118
+  VERDICT FAIL (expected FAIL) OK
+== fix parent c7eed15
+  min=8   step=16  fixed_linear d[0:4]=[0, 16, 16, 32] FAIL BOUND t=0 d=0 < min=8 (1 steps)
+  min=8   step=16  fixed_root   d[0:4]=[0, 96, 144, 176] FAIL BOUND t=0 d=0 < min=8 (1 steps)
+  min=1   step=8   fixed_linear d[0:4]=[0, 8, 16, 24] FAIL BOUND t=0 d=0 < min=1 (1 steps)
+  min=1   step=8   fixed_root   d[0:4]=[0, 96, 144, 176] FAIL BOUND t=0 d=0 < min=1 (1 steps)
+  min=10  step=8   fixed_linear d[0:4]=[8, 16, 24, 40] FAIL BOUND t=0 d=8 < min=10 (1 steps)
+  min=10  step=8   fixed_root   d[0:4]=[8, 104, 152, 184] FAIL BOUND t=0 d=8 < min=10 (1 steps)
+  min=8   step=8   fixed_linear d[0:4]=[8, 16, 24, 32] PASS
+  min=8   step=8   fixed_root   d[0:4]=[8, 104, 144, 176] PASS
+  min=64  step=16  fixed_linear d[0:4]=[64, 64, 80, 80] PASS
+  min=64  step=16  fixed_root   d[0:4]=[64, 160, 192, 224] PASS
+  trigger configs failing: 6/6, benign false positives: 0/4
+  tutorial (min=8 step=16 T=15000): optimizer steps with d < min = 118
+  VERDICT FAIL (expected FAIL) OK
+== fix        8e09ed2 (#8334)
+  min=8   step=16  fixed_linear d[0:4]=[16, 16, 16, 32] PASS
+  min=8   step=16  fixed_root   d[0:4]=[16, 96, 144, 176] PASS
+  min=1   step=8   fixed_linear d[0:4]=[8, 8, 16, 24] PASS
+  min=1   step=8   fixed_root   d[0:4]=[8, 96, 144, 176] PASS
+  min=10  step=8   fixed_linear d[0:4]=[16, 16, 24, 40] PASS
+  min=10  step=8   fixed_root   d[0:4]=[16, 104, 152, 184] PASS
+  min=8   step=8   fixed_linear d[0:4]=[8, 16, 24, 32] PASS
+  min=8   step=8   fixed_root   d[0:4]=[8, 104, 144, 176] PASS
+  min=64  step=16  fixed_linear d[0:4]=[64, 64, 80, 80] PASS
+  min=64  step=16  fixed_root   d[0:4]=[64, 160, 192, 224] PASS
+  trigger configs failing: 0/6, benign false positives: 0/4
+  tutorial (min=8 step=16 T=15000): optimizer steps with d < min = 0
+  VERDICT PASS (expected PASS) OK
+ORACLE MATCHES HISTORY

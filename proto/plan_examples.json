@@ -1,0 +1,34 @@
+[
+ {"summary": "Vectorised clip_grad_norm_ changes how per-parameter norms combine.",
+  "declared_behavior_change": false,
+  "checks": [
+   {"id": "c1", "family": "decomposition", "adapter": "grad_norm",
+    "call": {"target": "deepspeed/runtime/utils.py:clip_grad_norm_", "kwargs": {"max_norm": {"float": 1000000.0}}},
+    "params": {"pieces": 3, "combine": "same", "p": [2, 1, 3]}, "pattern": "power_root_order",
+    "why": "Splitting the gradient vector into parameters must not change its p-norm; tests only use p=2."},
+   {"id": "c2", "family": "reference", "adapter": "grad_norm",
+    "call": {"target": "deepspeed/runtime/utils.py:clip_grad_norm_", "kwargs": {"max_norm": {"float": 1.0}}},
+    "params": {"ref": "torch.clip_grad_norm_", "cases": [{"norm_type": {"float": 1.0}}, {"norm_type": {"float": 3.0}}]},
+    "pattern": "power_root_order", "why": "Same maths as torch.nn.utils.clip_grad_norm_ on one rank."}]},
+ {"summary": "Curriculum difficulty is floored to a multiple of difficulty_step.",
+  "declared_behavior_change": false,
+  "checks": [
+   {"id": "c1", "family": "bounds", "adapter": "call",
+    "call": {"target": "deepspeed/runtime/data_pipeline/curriculum_scheduler.py:CurriculumScheduler",
+             "construct": {"config": {"dict": {"min_difficulty": {"int": 8}, "max_difficulty": {"int": 1024},
+                           "schedule_type": {"str": "fixed_linear"},
+                           "schedule_config": {"dict": {"total_curriculum_step": {"int": 100}, "difficulty_step": {"int": 16}}}}}},
+             "method": "get_difficulty", "args": [{"sweep": true}]},
+    "params": {"sweep": {"start": 0, "stop": 150}, "lo": {"config": "min_difficulty"}, "hi": {"config": "max_difficulty"}},
+    "pattern": "one_sided_clamp", "why": "Quantising to a step must keep the configured minimum."}]},
+ {"summary": "Adds eval every N steps; touches the accumulation loop.",
+  "declared_behavior_change": false,
+  "checks": [
+   {"id": "c1", "family": "ga_invariance", "adapter": "train_step",
+    "call": {"target": "train.py:train_step"}, "params": {"micro": 2, "accum": 4, "ragged_mask": false},
+    "pattern": "grad_accum", "why": "4 micro-batches of 2 must equal one batch of 8."},
+   {"id": "c2", "family": "config_audit", "adapter": "optimizer_groups",
+    "call": {"target": "model.py:GPT.configure_optimizers"},
+    "params": {"rules": ["each_param_once", "lr_matches_config", "decay_rule_ndim"]}, "pattern": "param_groups",
+    "why": "Mandatory for any PR touching train.py."}]}
+]

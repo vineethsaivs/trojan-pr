@@ -1,0 +1,49 @@
+pre-intro dc226fdb  deepspeed/pt/deepspeed_lr_schedules.py
+    file not present at this SHA
+intro     7a9fbe67  deepspeed/pt/deepspeed_lr_schedules.py
+    k=2 lr  rise: levels=8 (max 3) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=2 lr  fall: levels=8 (max 3) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=2 mom rise: levels=8 (max 3) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=2 mom fall: levels=8 (max 3) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=2 lr rise: [0.001, 0.002125, 0.00325, 0.004375, 0.0055, 0.006625, 0.00775, 0.008875]
+    k=4 lr  rise: levels=8 (max 5) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=4 lr  fall: levels=8 (max 5) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=4 mom rise: levels=8 (max 5) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=4 mom fall: levels=8 (max 5) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=4 lr rise: [0.001, 0.002125, 0.00325, 0.004375, 0.0055, 0.006625, 0.00775, 0.008875]
+    k=0 lr rise: [0.001, 0.002125, 0.00325, 0.004375, 0.0055, 0.006625, 0.00775, 0.008875]
+fixparent 6c58fb75  deepspeed/runtime/lr_schedules.py
+    k=2 lr  rise: levels=8 (max 3) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=2 lr  fall: levels=8 (max 3) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=2 mom rise: levels=8 (max 3) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=2 mom fall: levels=8 (max 3) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=2 lr rise: [0.002125, 0.00325, 0.004375, 0.0055, 0.006625, 0.00775, 0.008875, 0.01]
+    k=4 lr  rise: levels=8 (max 5) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=4 lr  fall: levels=8 (max 5) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=4 mom rise: levels=8 (max 5) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=4 mom fall: levels=8 (max 5) on_grid=False monotone=True changed_vs_k0=False -> FAIL
+    k=4 lr rise: [0.002125, 0.00325, 0.004375, 0.0055, 0.006625, 0.00775, 0.008875, 0.01]
+    k=0 lr rise: [0.002125, 0.00325, 0.004375, 0.0055, 0.006625, 0.00775, 0.008875, 0.01]
+fix       3169c2dc  deepspeed/runtime/lr_schedules.py
+    k=2 lr  rise: levels=3 (max 3) on_grid=True monotone=True changed_vs_k0=True -> PASS
+    k=2 lr  fall: levels=2 (max 3) on_grid=True monotone=True changed_vs_k0=True -> PASS
+    k=2 mom rise: levels=3 (max 3) on_grid=True monotone=True changed_vs_k0=True -> PASS
+    k=2 mom fall: levels=2 (max 3) on_grid=True monotone=True changed_vs_k0=True -> PASS
+    k=2 lr rise: [0.001, 0.001, 0.001, 0.0055, 0.0055, 0.0055, 0.0055, 0.01]
+    k=4 lr  rise: levels=5 (max 5) on_grid=True monotone=True changed_vs_k0=True -> PASS
+    k=4 lr  fall: levels=4 (max 5) on_grid=True monotone=True changed_vs_k0=True -> PASS
+    k=4 mom rise: levels=5 (max 5) on_grid=True monotone=True changed_vs_k0=True -> PASS
+    k=4 mom fall: levels=4 (max 5) on_grid=True monotone=True changed_vs_k0=True -> PASS
+    k=4 lr rise: [0.001, 0.00325, 0.00325, 0.0055, 0.0055, 0.00775, 0.00775, 0.01]
+    k=0 lr rise: [0.002125, 0.00325, 0.004375, 0.0055, 0.006625, 0.00775, 0.008875, 0.01]
+benign control: k=0 schedule identical in fix parent and fix: True
+VERDICT: {
+ "pre-intro dc226fdb": "N/A (file absent: OneCycle did not exist yet)",
+ "intro     7a9fbe67": "FAIL",
+ "fixparent 6c58fb75": "FAIL",
+ "fix       3169c2dc": "PASS"
+}
+ORACLE BEHAVES AS EXPECTED (fail on bug, pass on fix, k=0 unchanged): True
+real 2.37
+user 0.17
+sys 0.10

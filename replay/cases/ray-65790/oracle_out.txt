@@ -1,0 +1,24 @@
+PASS  pre-intro b674c4a (parent of #4912) (q hardcoded to PBT_QUANTILE=0.25; q=0 not expressible here)
+      n=4 (lower, upper) by q: q=0.25: (1, 1)
+FAIL  intro     c2253d2 (#4912 merge)
+      n=4 (lower, upper) by q: q=0.0: (0, 4), q=0.1: (1, 1), q=0.25: (1, 1), q=0.4: (2, 2), q=0.5: (2, 2)
+      n=2 q=0.0: lower=0 upper=2 of 2 [I1 q=0 not empty, I2 |lower|!=|upper|, I5 size]
+      n=2: I6 |upper| not monotone in q [(0.0, 2), (0.1, 1), (0.25, 1), (0.4, 1), (0.5, 1)]
+      n=3 q=0.0: lower=0 upper=3 of 3 [I1 q=0 not empty, I2 |lower|!=|upper|, I5 size]
+      n=3: I6 |upper| not monotone in q [(0.0, 3), (0.1, 1), (0.25, 1), (0.4, 1), (0.5, 1)]
+      n=4 q=0.0: lower=0 upper=4 of 4 [I1 q=0 not empty, I2 |lower|!=|upper|, I5 size]
+      n=4: I6 |upper| not monotone in q [(0.0, 4), (0.1, 1), (0.25, 1), (0.4, 2), (0.5, 2)]
+      ... 6 more
+FAIL  fix-parent 0dc4886 (ray master before fix)
+      n=4 (lower, upper) by q: q=0.0: (0, 4), q=0.1: (1, 1), q=0.25: (1, 1), q=0.4: (2, 2), q=0.5: (2, 2)
+      n=2 q=0.0: lower=0 upper=2 of 2 [I1 q=0 not empty, I2 |lower|!=|upper|, I5 size]
+      n=2: I6 |upper| not monotone in q [(0.0, 2), (0.1, 1), (0.25, 1), (0.4, 1), (0.5, 1)]
+      n=3 q=0.0: lower=0 upper=3 of 3 [I1 q=0 not empty, I2 |lower|!=|upper|, I5 size]
+      n=3: I6 |upper| not monotone in q [(0.0, 3), (0.1, 1), (0.25, 1), (0.4, 1), (0.5, 1)]
+      n=4 q=0.0: lower=0 upper=4 of 4 [I1 q=0 not empty, I2 |lower|!=|upper|, I5 size]
+      n=4: I6 |upper| not monotone in q [(0.0, 4), (0.1, 1), (0.25, 1), (0.4, 2), (0.5, 2)]
+      ... 6 more
+PASS  fix       8c9e87c (#65790 merge)
+      n=4 (lower, upper) by q: q=0.0: (0, 0), q=0.1: (1, 1), q=0.25: (1, 1), q=0.4: (2, 2), q=0.5: (2, 2)
+
+expected pattern PASS/FAIL/FAIL/PASS: MATCH

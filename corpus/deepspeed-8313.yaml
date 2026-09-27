@@ -1,0 +1,7 @@
+id: deepspeed-8313
+repo: https://github.com/deepspeedai/DeepSpeed
+upstream_pr: https://github.com/deepspeedai/DeepSpeed/pull/8313
+buggy_sha: 92843ad706067f0ab551a06a079a8923dcde27b4
+fixed_sha: 37cf8f240b1eadb178df462d8b80d356beabcf8b
+scope: deepspeed/runtime/utils.py
+pattern: power_root_order

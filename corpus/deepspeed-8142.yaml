@@ -1,0 +1,7 @@
+id: deepspeed-8142
+repo: https://github.com/deepspeedai/DeepSpeed
+upstream_pr: https://github.com/deepspeedai/DeepSpeed/pull/8142
+buggy_sha: 10db6919d8e1606d8cd6a95df790f7b22e11a59f
+fixed_sha: 2163a01303c99be03ca758135400a85d60ca4a22
+scope: deepspeed/runtime/lr_schedules.py
+pattern: zero_denominator

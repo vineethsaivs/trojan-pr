@@ -1,0 +1,9 @@
+bitsandbytes 0.50.2, torch 2.10.0, tol 1e-05
+A want p=0.700000 (3 const steps) | B want p=0.693356 (5 varying steps) | C want step=N | D want ceil(K/G)
+pre-intro 11606c50 (parent of #4511)   N/A: unsloth/optimizers/q_galore_adamw.py does not exist at this SHA
+intro 45d0a343 (PR #4511 merge)        FAIL  A p=0.728763 err=+2.88e-02 FAIL | B p=0.721125 err=+2.78e-02 FAIL | C step=6,10 want 3,5 FAIL | D svd=4 want 2 FAIL
+fix-parent a092906c                    FAIL  A p=0.728763 err=+2.88e-02 FAIL | B p=0.721125 err=+2.78e-02 FAIL | C step=6,10 want 3,5 FAIL | D svd=4 want 2 FAIL
+fix 677a988d (PR #10842)               PASS  A p=0.700000 err=-8.15e-08 PASS | B p=0.693356 err=+7.16e-09 PASS | C step=3,5 want 3,5 PASS | D svd=2 want 2 PASS
+real 4.50
+user 2.10
+sys 0.70

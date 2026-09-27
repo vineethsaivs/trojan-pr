@@ -1,0 +1,30 @@
+
+== c9c8dfc  pre-intro (parent of e7f7cbe)
+   batch_hard_triplet_soft_margin_loss is a `pass` stub (forward returns None): no control possible
+   VERDICT NO-IMPL  (expected NO-IMPL)
+
+== e7f7cbe  introducing commit, PR #299
+   benign, gap 0.5            loss=0.8074103            ref=0.8074103      grads_finite=True  PASS
+   gap 88, just under cliff   loss=29.87551             ref=29.87551       grads_finite=True  PASS
+   gap 99, minimal repro      loss=inf                  ref=33.54217       grads_finite=False FAIL
+   PR #4019 test, fp32        loss=inf                  ref=998            grads_finite=False FAIL
+   PR #4019 test, fp64        loss=inf                  ref=998            grads_finite=False FAIL
+   VERDICT FAIL  (expected FAIL)
+
+== af1f4ef  fix parent (main, 2026)
+   benign, gap 0.5            loss=0.8074103            ref=0.8074103      grads_finite=True  PASS
+   gap 88, just under cliff   loss=29.87551             ref=29.87551       grads_finite=True  PASS
+   gap 99, minimal repro      loss=inf                  ref=33.54217       grads_finite=False FAIL
+   PR #4019 test, fp32        loss=inf                  ref=998            grads_finite=False FAIL
+   PR #4019 test, fp64        loss=inf                  ref=998            grads_finite=False FAIL
+   VERDICT FAIL  (expected FAIL)
+
+== f3db086  fix commit, PR #4019
+   benign, gap 0.5            loss=0.8074103            ref=0.8074103      grads_finite=True  PASS
+   gap 88, just under cliff   loss=29.87551             ref=29.87551       grads_finite=True  PASS
+   gap 99, minimal repro      loss=33.54218             ref=33.54217       grads_finite=True  PASS
+   PR #4019 test, fp32        loss=998                  ref=998            grads_finite=True  PASS
+   PR #4019 test, fp64        loss=998                  ref=998            grads_finite=True  PASS
+   VERDICT PASS  (expected PASS)
+
+ALL EXPECTED OUTCOMES MET: True

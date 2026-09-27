@@ -1,0 +1,46 @@
+torch 2.14.0, float64 inputs, B=4 T=5 V=11, beta=0, eps=0.2, num_processes=1
+
+== pre-intro f690a5aa^   (7 positional params, input=logits)
+  [dapo] N/A: Unknown loss type: dapo
+  [cispo] N/A: Unknown loss type: cispo
+  [bnpo] C1 empty N=0.0       loss=0.0 grad_all_zero=True -> PASS
+  [bnpo] C1 empty N=tensor(0) loss=0.0 grad_all_zero=True -> PASS
+  [bnpo] C2 reference N=13  loss=-0.263160335956034 ref=-0.263160335438129 err=5.18e-10 bound=2.63e-06 -> PASS
+  VERDICT f690a5aa^: PASS
+
+== intro f690a5aa (#308)   (8 positional params, input=logits)
+  [dapo] C1 empty N=0.0       loss=nan grad_all_zero=False -> FAIL
+  [dapo] C1 empty N=tensor(0) loss=nan grad_all_zero=False -> FAIL
+  [dapo] C2 reference N=13  loss=-0.263160335956034 ref=-0.263160335438129 err=5.18e-10 bound=2.63e-06 -> PASS
+  [dapo] C3 mask=1,N=0     loss=-inf grad_finite=False -> FAIL
+  [cispo] N/A: Unknown loss type: cispo
+  [bnpo] C1 empty N=0.0       loss=0.0 grad_all_zero=True -> PASS
+  [bnpo] C1 empty N=tensor(0) loss=0.0 grad_all_zero=True -> PASS
+  [bnpo] C2 reference N=13  loss=-0.263160335956034 ref=-0.263160335438129 err=5.18e-10 bound=2.63e-06 -> PASS
+  VERDICT f690a5aa: FAIL
+
+== fix-parent ac41049b   (8 positional params, input=logps)
+  [dapo] C1 empty N=0.0       loss=nan grad_all_zero=True -> FAIL
+  [dapo] C1 empty N=tensor(0) loss=nan grad_all_zero=True -> FAIL
+  [dapo] C2 reference N=13  loss=-0.263160335438129 ref=-0.263160335438129 err=0.00e+00 bound=2.63e-06 -> PASS
+  [dapo] C3 mask=1,N=0     loss=-inf grad_finite=False -> FAIL
+  [cispo] C1 empty N=0.0       loss=nan grad_all_zero=True -> FAIL
+  [cispo] C1 empty N=tensor(0) loss=nan grad_all_zero=True -> FAIL
+  [cispo] C3 mask=1,N=0     loss=inf grad_finite=False -> FAIL
+  [bnpo] C1 empty N=0.0       loss=0.0 grad_all_zero=True -> PASS
+  [bnpo] C1 empty N=tensor(0) loss=0.0 grad_all_zero=True -> PASS
+  [bnpo] C2 reference N=13  loss=-0.263160335438129 ref=-0.263160335438129 err=0.00e+00 bound=2.63e-06 -> PASS
+  VERDICT ac41049b: FAIL
+
+== fix 937d9434 (#1286)   (8 positional params, input=logps)
+  [dapo] C1 empty N=0.0       loss=0.0 grad_all_zero=True -> PASS
+  [dapo] C1 empty N=tensor(0) loss=0.0 grad_all_zero=True -> PASS
+  [dapo] C2 reference N=13  loss=-0.263160335438129 ref=-0.263160335438129 err=0.00e+00 bound=2.63e-06 -> PASS
+  [dapo] C3 mask=1,N=0     loss=-0.2822210438263559 grad_finite=True -> PASS
+  [cispo] C1 empty N=0.0       loss=0.0 grad_all_zero=True -> PASS
+  [cispo] C1 empty N=tensor(0) loss=0.0 grad_all_zero=True -> PASS
+  [cispo] C3 mask=1,N=0     loss=1.0574176649592486 grad_finite=True -> PASS
+  [bnpo] C1 empty N=0.0       loss=0.0 grad_all_zero=True -> PASS
+  [bnpo] C1 empty N=tensor(0) loss=0.0 grad_all_zero=True -> PASS
+  [bnpo] C2 reference N=13  loss=-0.263160335438129 ref=-0.263160335438129 err=0.00e+00 bound=2.63e-06 -> PASS
+  VERDICT 937d9434: PASS

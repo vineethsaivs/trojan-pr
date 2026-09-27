@@ -1,0 +1,7 @@
+id: deepspeed-8199
+repo: https://github.com/deepspeedai/DeepSpeed
+upstream_pr: https://github.com/deepspeedai/DeepSpeed/pull/8199
+buggy_sha: e1d6b4fe43626ca74df3defab06d747e0b499995
+fixed_sha: b8b448096524f7bfe81a709a14b57a1da83dfe75
+scope: deepspeed/utils/timer.py
+pattern: in_place_mutation

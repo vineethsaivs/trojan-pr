@@ -1,0 +1,10 @@
+torch 2.14.0  L=0.001 T=2000 W=1000 wmin=0.1 cmin=0.05
+da652d0e0b pre-intro (parent of #4563)  oracle: N/A  WarmupCosineLR not in VALID_LR_SCHEDULES yet
+                                        control(WarmupLR): PASS
+4388a605f8 intro #4563                  oracle: FAIL  [1] ratios typed (0.1, 0.05) came back (None, None); params={'warmup_min_lr': 0, 'warmup_max_lr': 0.001, 'warmup_num_steps': 1000, 'warmup_type': 'linear'} | [3] get_lr_from_config(CLI cfg) reports lr=0.001 | [3] get_lr_from_config(hand cfg) raises KeyError: 'warmup_max_lr' | [1] WarmupCosineLR(**params) raises TypeError: WarmupCosineLR.__init__() got an unexpected keyword argument 'warmup_min_lr'
+                                        control(WarmupLR): PASS
+3bdabae087 fix parent                   oracle: FAIL  [1] ratios typed (0.1, 0.05) came back (None, None); params={'warmup_min_lr': 0, 'warmup_max_lr': 0.001, 'warmup_num_steps': 1000, 'warmup_type': 'linear'} | [3] get_lr_from_config(CLI cfg) reports lr=0.001 | [3] get_lr_from_config(hand cfg) raises KeyError: 'warmup_max_lr' | [1] WarmupCosineLR(**params) raises TypeError: WarmupCosineLR.__init__() got an unexpected keyword argument 'warmup_min_lr'
+                                        control(WarmupLR): PASS
+cdd206ff41 fix #8268                    oracle: PASS  params={'warmup_num_steps': 1000, 'warmup_type': 'linear', 'warmup_min_ratio': 0.1, 'cos_min_ratio': 0.05} lr(0)=0.0001 peak=0.000999998 lr(T-1)=5e-05
+                                        control(WarmupLR): PASS
+EXPECTED PATTERN HOLDS

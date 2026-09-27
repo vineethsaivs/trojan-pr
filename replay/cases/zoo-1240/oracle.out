@@ -1,0 +1,20 @@
+9119c88b43bb pre-intro (parent of PR #45): N/A, file absent at this SHA (HTTP 404)
+  d=+1e-03  mean_kl=+4.768e-07  exact=4.997e-07  tol=6.2e-09  nonneg=True  close=False
+  d=+1e-04  mean_kl=+0.000e+00  exact=5.000e-09  tol=1.7e-10  nonneg=True  close=False
+  d=+1e-06  mean_kl=+0.000e+00  exact=5.000e-13  tol=1.2e-12  nonneg=True  close=True
+  d=-1e-04  mean_kl=+0.000e+00  exact=5.000e-09  tol=1.7e-10  nonneg=True  close=False
+86232127f908 intro (PR #45): FAIL
+  d=+1e-03  mean_kl=+4.768e-07  exact=5.002e-07  tol=5.2e-09  nonneg=True  close=False
+  d=+1e-04  mean_kl=+0.000e+00  exact=5.000e-09  tol=7.4e-11  nonneg=True  close=False
+  d=+1e-06  mean_kl=-5.960e-08  exact=5.000e-13  tol=2.4e-13  nonneg=False  close=False
+  d=-1e-04  mean_kl=+0.000e+00  exact=5.000e-09  tol=7.4e-11  nonneg=True  close=False
+17d7f22fd8d2 fix parent (buggy, 2026-09): FAIL
+  d=+1e-03  mean_kl=+5.001e-07  exact=5.002e-07  tol=5.2e-09  nonneg=True  close=True
+  d=+1e-04  mean_kl=+4.999e-09  exact=5.000e-09  tol=7.4e-11  nonneg=True  close=True
+  d=+1e-06  mean_kl=+4.547e-13  exact=5.000e-13  tol=2.4e-13  nonneg=True  close=True
+  d=-1e-04  mean_kl=+4.999e-09  exact=5.000e-09  tol=7.4e-11  nonneg=True  close=True
+ba721e43c057 fix (PR #1240): PASS
+ORACLE BEHAVES AS EXPECTED
+real 4.06
+user 0.90
+sys 0.23

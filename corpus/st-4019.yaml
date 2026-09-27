@@ -1,0 +1,7 @@
+id: st-4019
+repo: https://github.com/huggingface/sentence-transformers
+upstream_pr: https://github.com/huggingface/sentence-transformers/pull/4019
+buggy_sha: af1f4efcbbd3dc990b7e9b2ae281fb0843bc699e
+fixed_sha: f3db086191749a0707547acd1943236871e8195c
+scope: sentence_transformers/sentence_transformer/losses/batch_hard_soft_margin_triplet.py
+pattern: overflow

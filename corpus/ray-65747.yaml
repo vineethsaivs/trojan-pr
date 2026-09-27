@@ -1,0 +1,7 @@
+id: ray-65747
+repo: https://github.com/ray-project/ray
+upstream_pr: https://github.com/ray-project/ray/pull/65747
+buggy_sha: 8c9e87cd2d77af4eb2a6fdda8fc82a9d948bffad
+fixed_sha: e9456df39bfed41ce054a55468a7985b42d5eea5
+scope: python/ray/tune/schedulers/pbt.py
+pattern: truncating_cast

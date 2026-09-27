@@ -1,0 +1,39 @@
+torch 2.14.0  python 3.12.10  grads [3,-4]+[2]  max_norm=1.0
+pre-intro   4f477328 (#4915 parent)
+  utils.clip_grad_norm_ p=1: truth=9.0000 got=9.0000 [A ok]  max|g'-contract|=0.0000 [B ok]  splits=[9.0, 9.0, 9.0] [C ok]
+  utils.clip_grad_norm_ p=2: truth=5.3852 got=5.3852 [A ok]  max|g'-contract|=0.0000 [B ok]  splits=[5.3852, 5.3852, 5.3852] [C ok]
+  utils.clip_grad_norm_ p=3: truth=4.6261 got=4.6261 [A ok]  max|g'-contract|=0.0000 [B ok]  splits=[4.6261, 4.6261, 4.6261] [C ok]
+  => PASS (expected PASS)
+INTRO #4915 961bc856
+  utils.clip_grad_norm_ p=1: truth=9.0000 got=53.0000 [A FAIL]  max|g'-contract|=3.5556 [B FAIL]  splits=[53.0, 81.0, 29.0] [C FAIL]
+  utils.clip_grad_norm_ p=2: truth=5.3852 got=5.3852 [A ok]  max|g'-contract|=3.2572 [B FAIL]  splits=[5.3852, 5.3852, 5.3852] [C ok]
+  utils.clip_grad_norm_ p=3: truth=4.6261 got=2.8937 [A FAIL]  max|g'-contract|=3.1353 [B FAIL]  splits=[2.8937, 2.7764, 3.0723] [C FAIL]
+  => FAIL (expected FAIL)  failed: utils A p=1, utils B p=1, utils C p=1, utils B p=2, utils A p=3, utils B p=3, utils C p=3
+#5150       005afe12
+  utils.clip_grad_norm_ p=1: truth=9.0000 got=53.0000 [A FAIL]  max|g'-contract|=0.3690 [B FAIL]  splits=[53.0, 81.0, 29.0] [C FAIL]
+  utils.clip_grad_norm_ p=2: truth=5.3852 got=5.3852 [A ok]  max|g'-contract|=0.0000 [B ok]  splits=[5.3852, 5.3852, 5.3852] [C ok]
+  utils.clip_grad_norm_ p=3: truth=4.6261 got=2.8937 [A FAIL]  max|g'-contract|=0.5176 [B FAIL]  splits=[2.8937, 2.7764, 3.0723] [C FAIL]
+  => FAIL (expected FAIL)  failed: utils A p=1, utils B p=1, utils C p=1, utils A p=3, utils B p=3, utils C p=3
+fix parent  92843ad7
+  utils.clip_grad_norm_ p=1: truth=9.0000 got=53.0000 [A FAIL]  max|g'-contract|=0.3690 [B FAIL]  splits=[53.0, 81.0, 29.0] [C FAIL]
+  utils.clip_grad_norm_ p=2: truth=5.3852 got=5.3852 [A ok]  max|g'-contract|=0.0000 [B ok]  splits=[5.3852, 5.3852, 5.3852] [C ok]
+  utils.clip_grad_norm_ p=3: truth=4.6261 got=2.8937 [A FAIL]  max|g'-contract|=0.5176 [B FAIL]  splits=[2.8937, 2.7764, 3.0723] [C FAIL]
+  zero12.get_grad_norm_direct p=1: truth=9.0000 got=53.0000 [A FAIL]
+  zero12.get_grad_norm_direct p=2: truth=5.3852 got=5.3852 [A ok]
+  zero12.get_grad_norm_direct p=3: truth=4.6261 got=2.8937 [A FAIL]
+  zero3.get_grad_norm_direct p=1: truth=9.0000 got=29.0000 [A FAIL]
+  zero3.get_grad_norm_direct p=2: truth=5.3852 got=5.3852 [A ok]
+  zero3.get_grad_norm_direct p=3: truth=4.6261 got=3.0723 [A FAIL]
+  => FAIL (expected FAIL)  failed: utils A p=1, utils B p=1, utils C p=1, utils A p=3, utils B p=3, utils C p=3, zero12 A p=1, zero12 A p=3, zero3 A p=1, zero3 A p=3
+FIX #8313   37cf8f24
+  utils.clip_grad_norm_ p=1: truth=9.0000 got=9.0000 [A ok]  max|g'-contract|=0.0000 [B ok]  splits=[9.0, 9.0, 9.0] [C ok]
+  utils.clip_grad_norm_ p=2: truth=5.3852 got=5.3852 [A ok]  max|g'-contract|=0.0000 [B ok]  splits=[5.3852, 5.3852, 5.3852] [C ok]
+  utils.clip_grad_norm_ p=3: truth=4.6261 got=4.6261 [A ok]  max|g'-contract|=0.0000 [B ok]  splits=[4.6261, 4.6261, 4.6261] [C ok]
+  zero12.get_grad_norm_direct p=1: truth=9.0000 got=9.0000 [A ok]
+  zero12.get_grad_norm_direct p=2: truth=5.3852 got=5.3852 [A ok]
+  zero12.get_grad_norm_direct p=3: truth=4.6261 got=4.6261 [A ok]
+  zero3.get_grad_norm_direct p=1: truth=9.0000 got=9.0000 [A ok]
+  zero3.get_grad_norm_direct p=2: truth=5.3852 got=5.3852 [A ok]
+  zero3.get_grad_norm_direct p=3: truth=4.6261 got=4.6261 [A ok]
+  => PASS (expected PASS)
+ORACLE MATCHES EXPECTATIONS

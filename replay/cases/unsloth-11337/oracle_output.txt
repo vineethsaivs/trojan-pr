@@ -1,0 +1,14 @@
+oracle eval_loss = beta * mean KL = 0.03850859   (rel tol 0.001)
+PASS  pre-intro  (parent of #3390)  unsloth@0e766b28 zoo@75106e95
+      divisor = not forwarded
+      no train: 0.03850859  after GA=1: 0.03850859  after GA=4: 0.03850859  oracle/GA4 = 1.000000  (expected PASS)
+FAIL  introduce  (#3390 + zoo #308)  unsloth@45b1c7f7 zoo@f690a5aa
+      divisor = self.current_gradient_accumulation_steps
+      no train: AttributeError  after GA=1: 0.03850859  after GA=4: 0.00962715  oracle/GA4 = 4.000000  (expected FAIL)
+FAIL  fix parent (after #6523)  unsloth@43e7dd30 zoo@dcfe3905
+      divisor = getattr(self, 'current_gradient_accumulation_steps', 1)
+      no train: 0.03850859  after GA=1: 0.03850859  after GA=4: 0.00962715  oracle/GA4 = 4.000000  (expected FAIL)
+PASS  fix        (#11337)  unsloth@06c1bb40 zoo@dcfe3905
+      divisor = _unsloth_grpo_accumulation_steps(self)
+      no train: 0.03850859  after GA=1: 0.03850859  after GA=4: 0.03850859  oracle/GA4 = 1.000000  (expected PASS)
+oracle separates buggy from fixed as expected

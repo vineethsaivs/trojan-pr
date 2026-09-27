@@ -1,0 +1,68 @@
+== pre-intro (parent of #940) 0927c34392
+   N/A: LongRopeRotaryEmbedding does not exist at this SHA (no pre-intro control possible)
+== INTRO #940 fb60340 fb60340a90
+   phi3.5 L=1     warm forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   phi3.5 L=1     warm get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   phi3.5 L=4095  warm forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   phi3.5 L=4095  warm get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   phi3.5 L=orig  cold forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'long_cos_
+   phi3.5 L=orig  cold get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'long_cos_
+   phi3.5 L=orig  warm forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   phi3.5 L=orig  warm get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   phi3.5 L=4097  cold forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   phi3.5 L=4097  cold get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   phi3.5 L=4097  warm forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   phi3.5 L=4097  warm get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   toy    L=1     warm forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   toy    L=1     warm get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   toy    L=15    warm forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   toy    L=15    warm get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   toy    L=orig  cold forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'long_cos_
+   toy    L=orig  cold get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'long_cos_
+   toy    L=orig  warm forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   toy    L=orig  warm get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   toy    L=17    cold forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   toy    L=17    cold get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   toy    L=17    warm forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   toy    L=17    warm get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'inv_freq'
+   VERDICT FAIL: boundary failures=8, non-boundary failures=16 (tol 0.004)
+== tag November-2024 387dd13e31
+   phi3.5 L=orig  cold forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'long_cos_
+   phi3.5 L=orig  cold get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'long_cos_
+   phi3.5 L=orig  warm forward    FAIL max_abs_err=2.38
+   phi3.5 L=orig  warm get_cached FAIL max_abs_err=2.38
+   toy    L=orig  cold forward    FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'long_cos_
+   toy    L=orig  cold get_cached FAIL raised AttributeError: 'LongRopeRotaryEmbedding' object has no attribute 'long_cos_
+   toy    L=orig  warm forward    FAIL max_abs_err=2.58
+   toy    L=orig  warm get_cached FAIL max_abs_err=2.58
+   VERDICT FAIL: boundary failures=8, non-boundary failures=0 (tol 0.004)
+== #2919 merge 33b02d4 33b02d4a80
+   phi3.5 L=orig  cold forward    FAIL raised TypeError: 'NoneType' object is not subscriptable
+   phi3.5 L=orig  cold get_cached FAIL returned None
+   phi3.5 L=orig  warm forward    FAIL max_abs_err=2.38
+   phi3.5 L=orig  warm get_cached FAIL max_abs_err=2.38
+   toy    L=orig  cold forward    FAIL raised TypeError: 'NoneType' object is not subscriptable
+   toy    L=orig  cold get_cached FAIL returned None
+   toy    L=orig  warm forward    FAIL max_abs_err=2.58
+   toy    L=orig  warm get_cached FAIL max_abs_err=2.58
+   VERDICT FAIL: boundary failures=8, non-boundary failures=0 (tol 0.004)
+== fix parent 7434717 7434717466
+   phi3.5 L=orig  cold forward    FAIL raised TypeError: 'NoneType' object is not subscriptable
+   phi3.5 L=orig  cold get_cached FAIL returned None
+   phi3.5 L=orig  warm forward    FAIL max_abs_err=2.38
+   phi3.5 L=orig  warm get_cached FAIL max_abs_err=2.38
+   toy    L=orig  cold forward    FAIL raised TypeError: 'NoneType' object is not subscriptable
+   toy    L=orig  cold get_cached FAIL returned None
+   toy    L=orig  warm forward    FAIL max_abs_err=2.58
+   toy    L=orig  warm get_cached FAIL max_abs_err=2.58
+   VERDICT FAIL: boundary failures=8, non-boundary failures=0 (tol 0.004)
+== FIX #10681 9b3b2b1 9b3b2b1c82
+   phi3.5 L=orig  cold forward    PASS max_abs_err=0.000606
+   phi3.5 L=orig  cold get_cached PASS max_abs_err=0.000606
+   phi3.5 L=orig  warm forward    PASS max_abs_err=0.000606
+   phi3.5 L=orig  warm get_cached PASS max_abs_err=0.000606
+   toy    L=orig  cold forward    PASS max_abs_err=0.00048
+   toy    L=orig  cold get_cached PASS max_abs_err=0.00048
+   toy    L=orig  warm forward    PASS max_abs_err=0.00048
+   toy    L=orig  warm get_cached PASS max_abs_err=0.00048
+   VERDICT PASS: boundary failures=0, non-boundary failures=0 (tol 0.004)

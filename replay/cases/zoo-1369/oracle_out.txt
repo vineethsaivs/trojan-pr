@@ -1,0 +1,35 @@
+pre-intro 75106e95 (parent of #308)  minimal 1 token/mb   N/A: Unknown loss type: dapo
+pre-intro 75106e95 (parent of #308)  control spg==GA      N/A: Unknown loss type: dapo
+pre-intro 75106e95 (parent of #308)  spg>GA               N/A: Unknown loss type: dapo
+pre-intro 75106e95 (parent of #308)  spg<GA               N/A: Unknown loss type: dapo
+pre-intro 75106e95 (parent of #308)  TRL Lite-PPO DAPO    N/A: Unknown loss type: dapo
+pre-intro 75106e95 (parent of #308)  VERDICT N/A (no dapo branch)
+
+intro     f690a5aa (#308)  minimal 1 token/mb   spg=4  GA=2  got=+0.34021989 expected=+0.68043977 ratio=0.5000 tol=9.7e-07 FAIL
+intro     f690a5aa (#308)  control spg==GA      spg=2  GA=2  got=-0.92049584 expected=-0.92049584 ratio=1.0000 tol=5.3e-06 PASS
+intro     f690a5aa (#308)  spg>GA               spg=4  GA=2  got=-0.46024792 expected=-0.92049584 ratio=0.5000 tol=5.3e-06 FAIL
+intro     f690a5aa (#308)  spg<GA               spg=1  GA=2  got=-1.84099169 expected=-0.92049584 ratio=2.0000 tol=5.3e-06 FAIL
+intro     f690a5aa (#308)  TRL Lite-PPO DAPO    spg=8  GA=32 got=+0.14844144 expected=+0.03711036 ratio=4.0000 tol=1.6e-05 FAIL
+intro     f690a5aa (#308)  VERDICT FAIL
+
+fix-parent 863cce0e  minimal 1 token/mb   spg=4  GA=2  got=+0.34021989 expected=+0.68043977 ratio=0.5000 tol=9.7e-07 FAIL
+fix-parent 863cce0e  control spg==GA      spg=2  GA=2  got=-0.92049584 expected=-0.92049584 ratio=1.0000 tol=5.3e-06 PASS
+fix-parent 863cce0e  spg>GA               spg=4  GA=2  got=-0.46024792 expected=-0.92049584 ratio=0.5000 tol=5.3e-06 FAIL
+fix-parent 863cce0e  spg<GA               spg=1  GA=2  got=-1.84099169 expected=-0.92049584 ratio=2.0000 tol=5.3e-06 FAIL
+fix-parent 863cce0e  TRL Lite-PPO DAPO    spg=8  GA=32 got=+0.14844144 expected=+0.03711036 ratio=4.0000 tol=1.6e-05 FAIL
+fix-parent 863cce0e  VERDICT FAIL
+
+fix       a7640549 (#1369)  minimal 1 token/mb   spg=4  GA=2  got=+0.68043977 expected=+0.68043977 ratio=1.0000 tol=9.7e-07 PASS
+fix       a7640549 (#1369)  control spg==GA      spg=2  GA=2  got=-0.92049584 expected=-0.92049584 ratio=1.0000 tol=5.3e-06 PASS
+fix       a7640549 (#1369)  spg>GA               spg=4  GA=2  got=-0.92049584 expected=-0.92049584 ratio=1.0000 tol=5.3e-06 PASS
+fix       a7640549 (#1369)  spg<GA               spg=1  GA=2  got=-0.92049584 expected=-0.92049584 ratio=1.0000 tol=5.3e-06 PASS
+fix       a7640549 (#1369)  TRL Lite-PPO DAPO    spg=8  GA=32 got=+0.03711036 expected=+0.03711036 ratio=1.0000 tol=1.6e-05 PASS
+fix       a7640549 (#1369)  VERDICT PASS
+
+{
+ "pre-intro 75106e95 (parent of #308)": "N/A (no dapo branch)",
+ "intro     f690a5aa (#308)": "FAIL",
+ "fix-parent 863cce0e": "FAIL",
+ "fix       a7640549 (#1369)": "PASS"
+}
+ORACLE DISCRIMINATES (buggy FAIL, fix PASS): True

@@ -1,0 +1,31 @@
+torch 2.14.0, loss in fp32, reference in fp64
+
+== introducing 8d0b2d3 (PListMLELoss.py)
+  control [1,0]   loss=    0.313262 ref= 0.313262 |dL|= 5.94e-08 max|dgrad|=1.89e-08 tol=1.9e-06 PASS
+  control base4   loss=    1.974724 ref= 1.974724 |dL|= 9.65e-08 max|dgrad|=3.11e-08 tol=1.1e-05 PASS
+  [1000,999]      loss=         inf ref= 0.313262 |dL|=      inf max|dgrad|=     inf tol=1.9e-03 FAIL
+  [-1000,-1001]   loss= 1954.948242 ref= 0.313262 |dL|= 1.95e+03 max|dgrad|=1.27e+00 tol=1.9e-03 FAIL
+  base4 + 89      loss=         inf ref= 1.974724 |dL|=      inf max|dgrad|=     inf tol=3.5e-04 FAIL
+  base4 - 25      loss=    5.406010 ref= 1.974724 |dL|= 3.43e+00 max|dgrad|=9.75e-01 tol=9.5e-05 FAIL
+  VERDICT FAIL
+
+== fix parent  0e6ef65 (plist_mle.py)   
+  control [1,0]   loss=    0.313262 ref= 0.313262 |dL|= 5.94e-08 max|dgrad|=1.89e-08 tol=1.9e-06 PASS
+  control base4   loss=    1.974724 ref= 1.974724 |dL|= 9.65e-08 max|dgrad|=3.11e-08 tol=1.1e-05 PASS
+  [1000,999]      loss=         inf ref= 0.313262 |dL|=      inf max|dgrad|=     inf tol=1.9e-03 FAIL
+  [-1000,-1001]   loss= 1954.948242 ref= 0.313262 |dL|= 1.95e+03 max|dgrad|=1.27e+00 tol=1.9e-03 FAIL
+  base4 + 89      loss=         inf ref= 1.974724 |dL|=      inf max|dgrad|=     inf tol=3.5e-04 FAIL
+  base4 - 25      loss=    5.406010 ref= 1.974724 |dL|= 3.43e+00 max|dgrad|=9.75e-01 tol=9.5e-05 FAIL
+  VERDICT FAIL
+
+== fix         94d68cf (plist_mle.py)   
+  control [1,0]   loss=    0.313262 ref= 0.313262 |dL|= 5.94e-08 max|dgrad|=1.89e-08 tol=1.9e-06 PASS
+  control base4   loss=    1.974724 ref= 1.974724 |dL|= 9.65e-08 max|dgrad|=8.20e-08 tol=1.1e-05 PASS
+  [1000,999]      loss=    0.313232 ref= 0.313262 |dL|= 2.93e-05 max|dgrad|=3.03e-05 tol=1.9e-03 PASS
+  [-1000,-1001]   loss=    0.313232 ref= 0.313262 |dL|= 2.93e-05 max|dgrad|=3.03e-05 tol=1.9e-03 PASS
+  base4 + 89      loss=    1.974731 ref= 1.974724 |dL|= 7.77e-06 max|dgrad|=1.05e-05 tol=3.5e-04 PASS
+  base4 - 25      loss=    1.974724 ref= 1.974724 |dL|= 1.42e-07 max|dgrad|=8.14e-07 tol=9.5e-05 PASS
+  VERDICT PASS
+
+self-check OK: FAIL on 8d0b2d3 and 0e6ef65, PASS on 94d68cf, no control false alarms
+pre-introduction bd86a28: not applicable, ListMLE/PListMLE files do not exist there

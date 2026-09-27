@@ -1,0 +1,36 @@
+# private planning and notes
+PLAN.md
+CASES.md
+SESSION_KICKOFF.md
+HACKATHON.md
+VULTR.md
+NOTES.md
+archive/
+research/
+# secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+infra/cloud-init/*.yaml
+# upstream code snapshots: fetched at run time, never committed
+proto/cache/
+proto/src/
+proto/intro/*.base.py
+replay/cases/*/*
+!replay/cases/*/oracle.py
+!replay/cases/*/oracle*.out
+!replay/cases/*/oracle*.txt
+bakeoff/inputs/
+# runtime data
+*.sqlite*
+*.db
+runs/
+*.log
+# tooling
+.venv/
+venv/
+__pycache__/
+.DS_Store
