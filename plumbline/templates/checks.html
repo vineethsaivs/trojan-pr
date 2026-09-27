@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Checks · Trojan PR{% endblock %}
+{% set FAM = {"decomposition": "split invariance", "reference": "reference match", "dtype_shadow": "float64 shadow", "edge_sweep": "edge inputs", "bounds": "bounds", "monotonic": "monotonic", "no_mutation": "no mutation", "finite_extremes": "finite at extremes", "ga_invariance": "accumulation invariance", "config_audit": "config audit"} %}
+{% set WHICH = {"intro": "PR that introduced a bug", "fix": "fix PR (control)", "repo": "agent PR"} %}
+{% block main %}
+<header class="case-head">
+  <h1>Checks</h1>
+  <p class="run-meta">The latest check of every PR Trojan PR has seen. Look at the rules: the model picks different math for different code, and plain code computes and decides.</p>
+</header>
+
+<ul class="sys" aria-label="System status">
+  <li class="{{ 'ok' if sys.sandbox else 'down' }}"><span class="led" aria-hidden="true"></span>Sandbox VM {{ "online" if sys.sandbox else "unreachable" }}{% if sys.runsc %} <span class="mono">gVisor {{ sys.runsc.replace("release-", "") }}</span>{% endif %}</li>
+  <li class="ok"><span class="led" aria-hidden="true"></span>Model <span class="mono">{{ sys.model }}</span> on Vultr Serverless Inference</li>
+  <li class="ok"><span class="led" aria-hidden="true"></span>Receipts signed, key <span class="mono">{{ sys.key_id or "n/a" }}</span></li>
+  <li class="ok"><span class="led" aria-hidden="true"></span>Served through NetBird, zero open ports</li>
+</ul>
+
+<ol class="feed">
+{% for r in rows %}
+  {% set s = r.s %}{% set vd = r.verdict or "" %}
+  <li class="check">
+    <span class="pill pill-{{ (vd or r.status or 'none')|lower|replace(' ', '-') }}">{% if vd == "BLOCK" %}Blocked{% elif vd == "PASS" %}Passed{% elif vd == "NOT COVERED" %}Not covered{% elif r.status in ("running", "planning") %}Running{% elif vd %}{{ vd|capitalize }}{% else %}{{ (r.status or "unknown")|capitalize }}{% endif %}</span>
+    <div class="check-main">
+      <a class="check-title" href="/runs/{{ r.id }}">{{ (s.get("title") or r.case_id or r.id)|truncate(90, true) }}</a>
+      <p class="check-sub">{% if s.get("repo") %}{{ s.repo }}{% if s.get("pr") %} #{{ s.pr }}{% endif %} · {% endif %}{{ WHICH.get(s.get("which") or r.kind, s.get("which") or r.kind) }}</p>
+      {% if r.fams %}<p class="chips-row">{% for f in r.fams %}<span class="rchip{% if f.builtin %} is-builtin{% endif %}" title="{{ 'built-in rule' if f.builtin else 'chosen by the model for this PR' }}">{{ FAM.get(f.family, f.family) }}</span>{% endfor %}</p>{% endif %}
+    </div>
+    <div class="check-meta">
+      <span class="num">{% if r.wall_ms is not none %}{{ "%.1f"|format(r.wall_ms / 1000) }} s{% else %}…{% endif %}</span>
+      <span>{{ (r.created_at or "")[5:16]|replace("T", " ") }} UTC</span>
+      {% if r.verdict %}<a href="/runs/{{ r.id }}/receipt.json">receipt</a>{% endif %}
+    </div>
+  </li>
+{% endfor %}
+</ol>
+<p class="grid-note">Filled chips are built-in rules; outlined chips were chosen by the model for that PR.</p>
+{% endblock %}

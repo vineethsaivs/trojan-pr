@@ -444,3 +444,24 @@ html.stage .arena-controls .keys, html.stage .diff-box { display: none; }
 .fold > summary::-webkit-details-marker, .more > summary::-webkit-details-marker { display: none; }
 .fold > summary::before, .more > summary::before { content: ""; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 200ms ease-out; }
 .fold[open] > summary::before, .more[open] > summary::before { transform: rotate(45deg); }
+
+/* Checks feed: CI-style list of every check, with the rules chosen per PR */
+.sys { list-style: none; margin: 1.75rem 0 0; padding: 0.875rem 1.25rem; display: flex; flex-wrap: wrap; gap: 0.5rem 2rem; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; font-size: 0.9375rem; color: var(--ink-2); }
+.sys li { display: flex; align-items: center; gap: 0.5rem; }
+.sys .led { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(10, 107, 75, 0.15); }
+.sys .down .led { background: var(--red); box-shadow: 0 0 0 3px rgba(179, 38, 30, 0.15); }
+.feed { list-style: none; margin: 1.5rem 0 0; padding: 0; border-top: 1px solid var(--line); }
+.check { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr) auto; gap: 0.5rem 1.5rem; align-items: start; padding: 1rem 0.25rem; border-bottom: 1px solid var(--line); transition: background-color 200ms ease-out; }
+.check:hover { background: #F1EEE7; }
+.pill { justify-self: start; font-size: 0.875rem; font-weight: 600; padding: 0.25rem 0.75rem; border-radius: 999px; border: 1px solid var(--line-2); color: var(--gray); white-space: nowrap; }
+.pill-block { color: var(--red); border-color: var(--red); background: rgba(179, 38, 30, 0.06); }
+.pill-pass { color: var(--green); border-color: var(--green); }
+.pill-running, .pill-planning { color: var(--blue); border-color: var(--blue); }
+.check-title { color: var(--ink); font-weight: 500; text-decoration: none; }
+.check-title:hover { text-decoration: underline; }
+.check-sub { font-size: 0.9375rem; color: var(--gray); margin-top: 0.125rem; }
+.chips-row { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.5rem; }
+.rchip { font-size: 0.8125rem; color: var(--blue); border: 1px solid rgba(43, 76, 126, 0.45); border-radius: 999px; padding: 0.125rem 0.625rem; }
+.rchip.is-builtin { color: var(--ink-2); background: #ECE8E0; border-color: #ECE8E0; }
+.check-meta { display: grid; justify-items: end; gap: 0.125rem; font-size: 0.875rem; color: var(--gray); white-space: nowrap; }
+@media (max-width: 760px) { .check { grid-template-columns: 1fr; } .check-meta { justify-items: start; } }

@@ -16,6 +16,7 @@
 <header class="top">
   <a class="mark" href="/">Trojan PR</a>
   <nav aria-label="Pages">
+    <a href="/checks"{% if request.url.path == "/checks" %} aria-current="page"{% endif %}>Checks</a>
     <a href="/"{% if request.url.path == "/" %} aria-current="page"{% endif %}>Cases</a>
     <a href="/arena"{% if request.url.path == "/arena" %} aria-current="page"{% endif %}>Arena</a>
   </nav>

@@ -89,6 +89,58 @@ def index(request: Request):
     return T.TemplateResponse(request, "index.html", _ctx(request, rows=rows, totals=totals, numbers=nums))
 
 
+def _system():
+    """Live status for the strip on /checks and for /healthz: sandbox VM reachable, model, signing key."""
+    import httpx
+    st = {"sandbox": None, "runsc": None, "model": os.environ.get("PLANNER_MODEL", "deepseek-v4-flash-0731"), "key_id": None}
+    try:
+        h = httpx.get(os.environ.get("SANDBOXD_URL", "") + "/healthz", timeout=2).json()
+        st["sandbox"], st["runsc"] = bool(h.get("ok")), (h.get("runsc_version") or "").replace("runsc version ", "")
+    except Exception:
+        st["sandbox"] = False
+    try:
+        conn = db.connect()
+        r = conn.execute("SELECT body FROM receipts ORDER BY rowid DESC LIMIT 1").fetchone()
+        st["key_id"] = ((_j(r["body"], {}) or {}).get("signature") or {}).get("key_id") if r else None
+        m = conn.execute("SELECT json_extract(plan, '$.model') AS m FROM runs WHERE json_extract(plan, '$.model') IS NOT NULL "
+                         "ORDER BY created_at DESC LIMIT 1").fetchone()
+        if m and m["m"]:
+            st["model"] = m["m"]   # the model the planner actually used last, not the configured default
+    except Exception:
+        pass
+    return st
+
+
+@app.get("/healthz")
+def healthz():
+    st = _system()
+    return JSONResponse({"ok": bool(st["sandbox"]), **st}, status_code=200 if st["sandbox"] else 503)
+
+
+@app.get("/checks")
+def checks(request: Request):
+    conn = db.connect()
+    rows, seen_pr = [], set()
+    for r in conn.execute("SELECT id, kind, case_id, subject, status, verdict, plan, wall_ms, created_at FROM runs "
+                          "ORDER BY created_at DESC LIMIT 600"):
+        s, p = _j(r["subject"], {}), _j(r["plan"], {}) or {}
+        key = (r["case_id"], s.get("which"), r["kind"])
+        if key in seen_pr or len(rows) >= 30:   # latest check per distinct PR, so the variety of rules is visible
+            continue
+        seen_pr.add(key)
+        mand = set(p.get("mandatory_ids") or [])
+        fams, seen = [], set()
+        for c in p.get("checks") or []:
+            k = (c.get("family"), c.get("id") in mand)
+            if k not in seen:
+                seen.add(k)
+                fams.append({"family": c.get("family"), "builtin": c.get("id") in mand})
+        rows.append({"id": r["id"], "kind": r["kind"], "case_id": r["case_id"], "s": s, "status": r["status"],
+                     "verdict": r["verdict"], "fams": fams, "wall_ms": r["wall_ms"], "created_at": r["created_at"],
+                     "model": p.get("model")})
+    return T.TemplateResponse(request, "checks.html", _ctx(request, rows=rows, sys=_system()))
+
+
 @app.get("/cases/{cid}")
 def case(request: Request, cid: str):
     c = next((c for c in _cases() if c["id"] == cid), None)
