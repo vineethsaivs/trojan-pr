@@ -45,13 +45,15 @@ def queue(harness="harness-frozen-v1"):
     conn = db.connect()
     for which in ("intro", "fix"):
         for cid in H:
-            done = conn.execute("SELECT count(*) FROM runs WHERE case_id=? AND id LIKE ? AND status='done' "
-                                "AND json_extract(subject, '$.harness')=?", (cid, f"{cid}-{which}-%", harness)).fetchone()[0]
-            if done:
+            rows = conn.execute("SELECT json_extract(plan, '$.errors') FROM runs WHERE case_id=? AND id LIKE ? "
+                                "AND status='done' AND json_extract(subject, '$.harness')=?",
+                                (cid, f"{cid}-{which}-%", harness)).fetchall()
+            timeouts = sum(1 for (e,) in rows if e and "Timeout" in e)
+            if rows and not (timeouts == len(rows) == 1):   # a planner-timeout-only run is rerun once (amendment 1)
                 continue
             t = time.time()
             try:
-                r = run_pr(cid, which, harness=harness, conn=conn)
+                r = run_pr(cid, which, harness=harness, conn=conn, cap_s=180)   # batch cap (amendment 1)
                 print(f"{cid} {which}: {r['verdict']} {r['statuses']} plan={r['plan']['source']} "
                       f"added={len(r['plan']['checks']) - len(r['plan']['mandatory_ids'])} {time.time() - t:.0f} s", flush=True)
             except Exception as e:

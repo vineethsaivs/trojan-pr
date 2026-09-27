@@ -111,3 +111,12 @@ seen the fixes, which can only inflate reviewer scores."
 | `harness/runjob.py` | `afe3189de78ef887752b5372b226f4ebf9f9cc0a2e2ed41a2b76095d6ddd5953` |
 | `harness/shims.py` | `526fa2bdb36e542076856d734ae6c45adc03ca7ccac8ad384074e614994792b4` |
 | `harness-frozen-v1/` (sandboxd harness_sha256, VM2) | `71643ef9c19c3336030e9738b77e60b3d06ea5d567585b766a96d3e7c6dcccd2` |
+
+## Amendment 1 (Sat Sep 26 20:00 PDT, before any held-out Sentinel run)
+
+The Sentinel queue's first two runs (ds-8313 intro, ds-8533 intro) fell back to mandatory-only plans
+because every deepseek planner request timed out at the 45 s planner cap while the reviewer bake-off
+held 8 concurrent calls to the same model (recorded error: `APITimeoutError`). The 45 s cap is a live
+demo limit; each reviewer call is allowed 300 s. For batch runs the planner cap is raised to 180 s.
+A run whose only failure is a planner timeout is rerun once; the timed-out runs stay in the database
+and are reported next to their reruns. Nothing else changes.
