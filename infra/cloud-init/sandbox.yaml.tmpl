@@ -1,0 +1,21 @@
+#cloud-config
+package_update: true
+packages: [git, jq, tmux, ca-certificates, curl, gnupg, python3-venv, python3-pip]
+write_files:
+  - path: /root/nb.key
+    permissions: '0600'
+    content: ${NB_SETUP_KEY}
+runcmd:
+  - curl -fsSL https://pkgs.netbird.io/install.sh | SKIP_UI_APP=true sh
+  - netbird up --setup-key-file /root/nb.key --hostname pl-sandbox
+  - shred -u /root/nb.key
+  - ufw allow in on wt0
+  - curl -fsSL https://get.docker.com | sh
+  - curl -fsSL https://gvisor.dev/archive.key | gpg --dearmor -o /usr/share/keyrings/gvisor-archive-keyring.gpg
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases release main" > /etc/apt/sources.list.d/gvisor.list
+  - apt-get update && apt-get install -y runsc
+  - install -d -m 755 /var/log/runsc /srv/jobs /srv/cache /opt/plumbline
+  - runsc install
+  - runsc install --runtime runsc-trace -- --network=none --debug --debug-log=/var/log/runsc/%ID%.%COMMAND%.log --strace --strace-syscalls=openat,execve,connect,socket
+  - systemctl restart docker
+  - docker run --rm --runtime=runsc hello-world > /root/gvisor-ok.txt 2>&1

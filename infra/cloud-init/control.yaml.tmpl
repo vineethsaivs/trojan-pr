@@ -1,0 +1,14 @@
+#cloud-config
+package_update: true
+packages: [git, jq, sqlite3, tmux, python3-venv, python3-pip]
+write_files:
+  - path: /root/nb.key
+    permissions: '0600'
+    content: ${NB_SETUP_KEY}
+runcmd:
+  - curl -fsSL https://pkgs.netbird.io/install.sh | SKIP_UI_APP=true sh
+  - netbird up --setup-key-file /root/nb.key --hostname pl-control
+  - shred -u /root/nb.key
+  - ufw allow in on wt0
+  - useradd --system --create-home --shell /usr/sbin/nologin plumbline
+  - install -d -m 700 -o plumbline /etc/plumbline /var/lib/plumbline
