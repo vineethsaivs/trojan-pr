@@ -11,7 +11,7 @@ from plumbline import db
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 ROLE = os.environ.get("PL_ROLE", "operator")
-CHIP = {"judge": "judge · PIN · via NetBird", "operator": "operator · P2P · NetBird"}[ROLE]
+CHIP = {"judge": "judge · PIN · via NetBird", "operator": "operator · NetBird peer"}[ROLE]
 LABELS = ["pre", "intro", "fixp", "fix"]
 _sha = os.path.join(ROOT, "GIT_SHA")
 VER = (open(_sha).read().split() or ["dev"])[0][:8] if os.path.exists(_sha) else "dev"   # static cache-bust

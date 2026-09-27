@@ -153,7 +153,7 @@ labeled by harness and planner version. Disclosure: when the v1.1 queue was stop
 case st-3868 had been planned and dispatched but produced no result; that plan and its interrupted
 run were not inspected and are superseded like the others.
 
-## Amendment 5 (Sat Sep 26 21:40 PDT, POST-HOC: written after every pre-registered result was seen)
+## Amendment 5 (Sat Sep 26 21:00 PDT, committed 82538e5 at 21:02 before the rerun; POST-HOC: written after every pre-registered result was seen)
 
 Reported separately; the pre-registered result (`harness-frozen-v2`, planner v1.2: intro BLOCK 2/12,
 PASS 1/12, NOT COVERED 9/12; fix PRs BLOCK 0/12) stays the headline and is never replaced.
