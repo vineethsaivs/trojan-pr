@@ -16,54 +16,71 @@
 {% set f = c.get("fix") or {} %}
 {% set hl = c.get("headline") %}
 {% set rp = c.get("replay") %}
+{% set prn = i.get("pr", "").split(" ")[0].rstrip("/").split("/")[-1] if i.get("pr") else "" %}
 
-<header class="page-head">
-  <div>
-    <h1><span class="mono">{{ c.get("function") or c.id }}</span>{% if c.get("repo") %} in {{ c.repo }}{% endif %}</h1>
-    <p class="meta"><span class="mono">{{ c.id }}</span>, {{ SPLIT.get(c.get("split"), c.get("split") or "unknown") }}{% if c.get("file") %}, <span class="mono">{{ c.file }}</span>{% endif %}</p>
+<header class="case-head">
+  <h1>{% if i.get("title") %}{{ i.title }}{% else %}<span class="mono">{{ c.get("function") or c.id }}</span>{% endif %}</h1>
+  <p class="run-meta">{% if prn %}<a href="{{ i.pr.split(' ')[0] }}">{{ c.get("repo") }} PR #{{ prn }}</a>{% else %}{{ c.get("repo") }}{% endif %}<span class="sep" aria-hidden="true"></span>changes <span class="mono">{{ c.get("function") or "the code" }}</span>{% if c.get("file") %} in <span class="mono">{{ c.file }}</span>{% endif %}</p>
+</header>
+
+<section class="launch" aria-label="Check this PR">
+  <div class="launch-text">
+    <h2>Does this PR keep the math right?</h2>
+    <ol class="launch-steps">
+      <li>A model on Vultr reads the diff and picks the math rules this code must obey.</li>
+      <li>Those rules run in locked gVisor sandboxes on the code before the PR, the PR, just before my fix, and my fix.</li>
+      <li>Plain code decides: block only if a rule held before the PR and breaks on it. The result is signed.</li>
+    </ol>
   </div>
   {% if can_run %}
   <form method="post" action="/cases/{{ c.id }}/run" class="run-form">
-    <button type="submit">Run Sentinel on {% if i.get("pr") %}PR #{{ i.pr.split(" ")[0].rstrip("/").split("/")[-1] }}{% else %}this change{% endif %}</button>
+    <button type="submit">Check {% if prn %}PR #{{ prn }}{% else %}this change{% endif %}</button>
+    <p class="launch-note">Takes 25 to 45 s</p>
   </form>
+  {% else %}
+  <p class="launch-note">Live runs are enabled for the three demo cases.</p>
   {% endif %}
-</header>
-
-<p class="bug">{{ fact(c.get("bug_plain"), "no plain-words summary for this case") }}</p>
-
-{% if hl %}
-<section class="two" aria-label="What it returned and what it must return">
-  {% if hl.get("context") %}<p class="ctx">{{ hl.context }}</p>{% endif %}
-  <p class="pair"><span class="got num">{{ hl.got }}</span> <span class="must"><span class="lbl">must be</span> <span class="num">{{ hl.must }}</span></span></p>
-  {% if c.get("two_numbers") %}<p class="full">{{ c.two_numbers }}</p>{% endif %}
 </section>
-{% elif c.get("two_numbers") %}
-<section class="two" aria-label="The measured numbers">
-  <p class="two-text">{{ c.two_numbers }}</p>
-</section>
-{% else %}
-<p class="two unknown">unknown: no measured pair recorded for this case</p>
+
+{% if runs %}
+<details class="fold">
+  <summary>Earlier checks of this PR ({{ runs|length }})</summary>
+  <table class="runs">
+    <thead><tr><th scope="col">Run</th><th scope="col">Verdict</th><th scope="col">Started (UTC)</th><th scope="col" class="r">Time</th></tr></thead>
+    <tbody>
+    {% for r in runs %}
+      <tr>
+        <td><a class="mono" href="/runs/{{ r.id }}">{{ r.id }}</a></td>
+        <td>{% if r.get("verdict") %}<span class="st st-{{ r.verdict|lower|replace(' ', '-') }}">{{ r.verdict }}</span>{% else %}<span class="unknown">{{ r.get("status") or "unknown" }}</span>{% endif %}</td>
+        <td class="num">{{ (r.get("created_at") or "")[:19]|replace("T", " ") }}</td>
+        <td class="num r">{% if r.get("wall_ms") is not none %}{{ "%.1f"|format(r.wall_ms / 1000) }} s{% else %}n/a{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</details>
 {% endif %}
 
-<section class="timeline" aria-label="Timeline">
-  <div class="tl-stop">
-    <span class="tl-what">Bug merged</span>
-    <span>{{ pr(i.get("pr")) }}{% if i.get("author") %} by {{ i.author }}{% endif %}</span>
-    {% if i.get("title") %}<span class="aside">{{ i.title }}</span>{% endif %}
-    {% if not i.get("pr") and i.get("note") %}<span class="aside">{{ i.note }}</span>{% endif %}
-    <span class="num">{{ (i.get("merged_at") or "")[:10] or "date unknown" }}</span>
-  </div>
-  <div class="tl-span">
-    {% if c.get("days_alive") is not none %}<span class="tl-days"><span class="num">{{ c.days_alive }}</span> days alive</span>{% else %}<span class="unknown">days alive unknown</span>{% endif %}
-    {% if c.get("releases") %}<span class="aside">{{ c.releases }}</span>{% endif %}
-  </div>
-  <div class="tl-stop">
-    <span class="tl-what">My fix merged</span>
-    <span>{{ pr(f.get("pr")) }}{% if f.get("approved_by") %}, approved by {{ f.approved_by }}{% endif %}</span>
-    <span class="num">{{ (f.get("merged_at") or "")[:10] or "date unknown" }}</span>
-  </div>
-</section>
-
+<details class="fold">
+  <summary>What really happened to this PR (spoiler)</summary>
+  <p class="bug">{{ fact(c.get("bug_plain"), "no plain-words summary for this case") }}</p>
+  {% if hl %}<p class="fold-nums"><span class="got num">{{ hl.got }}</span> <span class="lbl">must be</span> <span class="num">{{ hl.must }}</span>{% if hl.get("context") %} <span class="aside-inline">({{ hl.context }})</span>{% endif %}</p>{% endif %}
+  <section class="timeline" aria-label="Timeline">
+    <div class="tl-stop">
+      <span class="tl-what">Bug merged</span>
+      <span>{{ pr(i.get("pr")) }}{% if i.get("author") %} by {{ i.author }}{% endif %}</span>
+      <span class="num">{{ (i.get("merged_at") or "")[:10] or "date unknown" }}</span>
+    </div>
+    <div class="tl-span">
+      {% if c.get("days_alive") is not none %}<span class="tl-days"><span class="num">{{ c.days_alive }}</span> days alive</span>{% endif %}
+      {% if c.get("releases") %}<span class="aside">{{ c.releases }}</span>{% endif %}
+    </div>
+    <div class="tl-stop">
+      <span class="tl-what">My fix merged</span>
+      <span>{{ pr(f.get("pr")) }}{% if f.get("approved_by") %}, approved by {{ f.approved_by }}{% endif %}</span>
+      <span class="num">{{ (f.get("merged_at") or "")[:10] or "date unknown" }}</span>
+    </div>
+  </section>
 <section>
   <h2>Who checked it</h2>
   <dl class="facts">
@@ -73,30 +90,6 @@
     <div><dt>Linters</dt><dd>{{ fact(c.get("static"), "linters not run on this case") }}</dd></div>
     <div><dt>Reviewer re-run</dt><dd><span class="unknown">unknown: reviewer results are not on this page yet</span></dd></div>
   </dl>
-</section>
-
-<section>
-  <h2>Sentinel runs</h2>
-  {% if runs %}
-  <div class="scroll" tabindex="0" role="region" aria-label="Sentinel runs">
-  <table class="runs">
-    <thead><tr><th scope="col">Run</th><th scope="col">Verdict</th><th scope="col">Started (UTC)</th><th scope="col" class="r">Wall</th><th scope="col">Harness</th></tr></thead>
-    <tbody>
-    {% for r in runs %}{% set s = r.get("subject") or {} %}
-      <tr>
-        <td><a class="mono" href="/runs/{{ r.id }}">{{ r.id }}</a></td>
-        <td>{% if r.get("verdict") %}<span class="st st-{{ r.verdict|lower|replace(' ', '-') }}">{{ r.verdict }}</span>{% else %}<span class="unknown">{{ r.get("status") or "unknown" }}</span>{% endif %}</td>
-        <td class="num">{{ (r.get("created_at") or "")[:19]|replace("T", " ") }}</td>
-        <td class="num r">{% if r.get("wall_ms") is not none %}{{ "%.1f"|format(r.wall_ms / 1000) }} s{% else %}<span class="unknown">n/a</span>{% endif %}</td>
-        <td class="mono">{{ s.get("harness") or "unknown" }}{% if s.get("planner_version") %}, planner {{ s.planner_version }}{% endif %}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  </div>
-  {% else %}
-  <p class="unknown">No Sentinel runs for this case yet.</p>
-  {% endif %}
 </section>
 
 <section>
@@ -120,4 +113,5 @@
   <ul class="caveats">{% for cv in c.caveats %}<li>{{ cv }}</li>{% endfor %}</ul>
   {% endif %}
 </section>
+</details>
 {% endblock %}

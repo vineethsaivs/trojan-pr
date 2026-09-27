@@ -308,10 +308,10 @@ html.stage .arena-controls .keys, html.stage .diff-box { display: none; }
 /* Run page, verdict first. Calm: hairlines, one tint for failure, the verdict wipe is the only motion. */
 .run-head { margin-top: 2.5rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
 .run-head h1 { font-size: 2.25rem; letter-spacing: -0.015em; overflow-wrap: anywhere; }
-.run-meta { color: var(--ink-2); font-size: 1.125rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0; }
+.run-meta { color: var(--ink-2); font-size: 1.125rem; }
 .run-meta a { color: var(--ink-2); }
 .run-meta a:hover { color: var(--ink); }
-.sep { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--line-2); margin: 0 0.75rem; }
+.sep { display: inline-block; vertical-align: middle; width: 4px; height: 4px; border-radius: 50%; background: var(--line-2); margin: 0 0.75rem; }
 .run-status { font-size: 1.125rem; color: var(--gray); margin-top: 0.25rem; }
 .run-status.is-live { color: var(--blue); }
 .pulse { display: inline-block; vertical-align: middle; margin: -2px 0.625rem 0 0.125rem; width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
@@ -414,3 +414,33 @@ html.stage .arena-controls .keys, html.stage .diff-box { display: none; }
 .calc li.is-bad, .calc li.is-bad .res-word { color: var(--red); }
 .calc li.is-err .res-word { color: var(--gray); }
 @media (prefers-reduced-motion: reduce) { .step.is-active .dot { animation: none; } }
+
+/* Case launcher and folds */
+.case-head { margin-top: 2.5rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+.case-head h1 { font-size: 2.25rem; letter-spacing: -0.015em; overflow-wrap: anywhere; }
+.launch { margin-top: 2.25rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2rem 3rem; padding: 2rem 2.25rem; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 1px 2px rgba(21, 23, 26, 0.04), 0 12px 32px -12px rgba(21, 23, 26, 0.12); }
+.launch h2 { font-size: 1.5rem; margin: 0 0 0.875rem; }
+.launch-text { flex: 1 1 32rem; }
+.launch-steps { margin: 0; padding-left: 1.25rem; display: grid; gap: 0.5rem; color: var(--ink-2); font-size: 1.125rem; max-width: 62ch; }
+.launch .run-form { display: grid; justify-items: center; gap: 0.625rem; }
+.launch button { font-size: 1.375rem; padding: 1.125rem 2.25rem; border-radius: 8px; box-shadow: 0 1px 2px rgba(21, 23, 26, 0.08), 0 8px 20px -8px rgba(43, 76, 126, 0.45); transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms ease-out, background-color 200ms ease-out; }
+.launch button:hover { transform: translateY(-1px); }
+.launch-note { font-size: 0.9375rem; color: var(--gray); }
+.fold { margin-top: 1.5rem; border-top: 1px solid var(--line); padding-top: 0.875rem; font-size: 1.0625rem; }
+.fold > summary { color: var(--ink-2); font-weight: 500; }
+.fold > summary:hover { color: var(--ink); }
+.fold[open] > summary { margin-bottom: 1rem; }
+.fold .bug { font-size: 1.25rem; }
+.fold-nums { margin-top: 1rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 1rem; }
+.fold-nums .num { font: 500 2.5rem/1 var(--mono); }
+.fold-nums .got { color: var(--red); }
+.fold .timeline { margin-top: 1.5rem; }
+.checks-fold { margin-top: 2rem; }
+.checks-fold .checks { margin-top: 0.5rem; }
+.more { margin-top: 0.5rem; font-size: 0.9375rem; }
+.more > summary { color: var(--gray); }
+.more > summary:hover { color: var(--ink); }
+.fold > summary, .more > summary { list-style: none; display: flex; align-items: center; gap: 0.625rem; cursor: pointer; }
+.fold > summary::-webkit-details-marker, .more > summary::-webkit-details-marker { display: none; }
+.fold > summary::before, .more > summary::before { content: ""; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 200ms ease-out; }
+.fold[open] > summary::before, .more[open] > summary::before { transform: rotate(45deg); }

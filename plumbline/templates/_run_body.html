@@ -65,6 +65,11 @@
   {% set SHORT = {"decomposition": "split vs whole", "reference": "vs reference", "dtype_shadow": "vs float64", "edge_sweep": "edge input", "bounds": "range", "no_mutation": "input unchanged", "finite_extremes": "large input", "ga_invariance": "accumulation", "monotonic": "direction", "config_audit": "config"} %}
   {% set ON = {"pre": "the code before the PR", "intro": "the PR", "fixp": "the code before my fix", "fix": "my fix", "base": "the code before the PR", "head": "the PR"} %}
   {% set tgt = ((checks[0].get("call") or {}).get("target") or "") if checks else "" %}
+  {% set ordered = (v.grid|selectattr("mandatory")|list) + (v.grid|rejectattr("mandatory")|list) %}
+  {% set kr = namespace(rows=[], fams=[]) %}
+  {% for row in ordered %}{% if row.family not in kr.fams and (row.cells.values()|selectattr("status", "equalto", "FAIL")|list) %}{% set kr.rows = kr.rows + [row] %}{% set kr.fams = kr.fams + [row.family] %}{% endif %}{% endfor %}
+  {% if not kr.rows %}{% for row in ordered %}{% if row.family not in kr.fams %}{% set kr.rows = kr.rows + [row] %}{% set kr.fams = kr.fams + [row.family] %}{% endif %}{% endfor %}{% endif %}
+  {% set keyrows = kr.rows[:2] %}
   <section class="live" aria-label="What the checker is doing">
     <h2>{% if done %}What it did, step by step{% else %}Working, step by step{% endif %}</h2>
     <ol class="steps">
@@ -103,12 +108,19 @@
           <p class="step-t">{% if lc.n %}Ran them on {{ ON.get(l, l) }}{% elif p and not done %}Running them on {{ ON.get(l, l) }} in a gVisor sandbox{% else %}Run them on {{ ON.get(l, l) }}{% endif %}</p>
           <p class="step-d">{% if lc.sha %}DeepSpeed at <span class="mono">{{ lc.sha[:8] }}</span>, {% endif %}sandbox on Vultr VM2: no network, read-only disk</p>
           {% if lc.n %}
-          <ul class="calc">
-          {% for row in (v.grid|selectattr("mandatory")|list) + (v.grid|rejectattr("mandatory")|list) %}{% set c = row.cells.get(l) %}{% if c %}
+          {% macro line(row, c) -%}
             {% set d = (c.detail or "").split(";")[0] %}{% set ctx = d.rsplit(": ", 1)[0].split(": ")[0] if ": " in d else "" %}{% set calc = d.rsplit(": ", 1)[-1] %}
             <li class="{{ 'is-bad' if c.status == 'FAIL' else ('is-err' if c.status == 'ERROR' else '') }}"><span class="mono">{{ SHORT.get(row.family, row.family) }}{% if ctx %}, {{ ctx }}{% endif %}: {{ calc|truncate(60, true) }}</span> <span class="res-word">{{ {"PASS": "holds", "FAIL": "breaks", "ERROR": "error"}.get(c.status, c.status|lower) }}</span></li>
-          {% endif %}{% endfor %}
+          {%- endmacro %}
+          {% set nb = namespace(bad=0) %}{% for row in v.grid %}{% set c = row.cells.get(l) %}{% if c and c.status == "FAIL" %}{% set nb.bad = nb.bad + 1 %}{% endif %}{% endfor %}
+          <ul class="calc">
+          {% for row in keyrows %}{% set c = row.cells.get(l) %}{% if c %}{{ line(row, c) }}{% endif %}{% endfor %}
           </ul>
+          <details class="more"><summary>All {{ lc.n }} checks on this version: {{ nb.bad }} break</summary>
+          <ul class="calc">
+          {% for row in ordered %}{% set c = row.cells.get(l) %}{% if c %}{{ line(row, c) }}{% endif %}{% endfor %}
+          </ul>
+          </details>
           {% endif %}
         </div>
       </li>
@@ -123,8 +135,9 @@
     </ol>
   </section>
 
-  <section class="checks" aria-labelledby="checks-h">
-    <h2 id="checks-h">What was checked</h2>
+  <details class="fold checks-fold">
+  <summary>All the numbers in one table</summary>
+  <section class="checks" aria-label="All checks by version">
     <div class="scroll" tabindex="0" role="region" aria-label="Checks by version">
     <table class="grid">
       <thead><tr>
@@ -170,6 +183,7 @@
     </div>
     <p class="grid-note">Each result shows the two numbers its rule compares: the pieces vs the whole, or what the code gave vs what it must give. Hover for the exact gap and tolerance.</p>
   </section>
+  </details>
 
   <section class="fine" aria-label="Plan and receipt">
     <details>
