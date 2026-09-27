@@ -1,18 +1,15 @@
-{% set NAME = {"pre": "before the PR", "intro": "the PR", "fixp": "before my fix", "fix": "my fix", "base": "before the PR", "head": "the PR"} %}
-{% set SOURCE = {"planner": "planner", "planner_repaired": "planner, repaired after schema errors", "planner_partial": "planner, invalid checks dropped", "prepass_default": "planner unavailable: mandatory checks only"} %}
+{% set NAME = {"pre": "Before the PR", "intro": "The PR", "fixp": "Before my fix", "fix": "My fix", "base": "Before the PR", "head": "The PR"} %}
+{% set SOURCE = {"planner": "planner", "planner_repaired": "planner, repaired after schema errors", "planner_partial": "planner, invalid checks dropped", "prepass_default": "planner unavailable: built-in checks only"} %}
 {% set DECISION = {"detected": "broken by the PR", "detected_new": "fails on new code", "clean": "holds", "clean_new": "holds on new code", "preexisting": "already failing", "improved": "fixed by the PR", "inconclusive": "inconclusive"} %}
+{% set RULE = {"decomposition": "Splitting the numbers must not change their size", "reference": "Must match a trusted reference", "dtype_shadow": "Must match a float64 version", "edge_sweep": "Edge inputs must stay finite", "bounds": "Output must stay in its range", "no_mutation": "Must not edit the caller's data", "finite_extremes": "Large inputs must stay finite", "ga_invariance": "Accumulation must not change the result", "monotonic": "Must move the right way", "config_audit": "Settings must reach the optimizer"} %}
 {% macro num(x) -%}{% if x is number %}{{ "%.3g"|format(x) }}{% else %}{{ x }}{% endif %}{%- endmacro %}
 {% set done = v and v.done %}
 <div class="run" id="run"{% if not done %} hx-get="/runs/{{ run_id }}/body" hx-trigger="every 1s" hx-swap="outerHTML" aria-busy="true"{% endif %}>
 {% if not v %}
-  <header class="page-head">
-    <div>
-      <h1>Starting run</h1>
-      <p class="meta"><span class="mono">{{ run_id }}</span></p>
-    </div>
-    <p class="state">Starting</p>
+  <header class="run-head">
+    <h1>Starting the run</h1>
+    <p class="run-status is-live"><span class="pulse" aria-hidden="true"></span>Creating the run</p>
   </header>
-  <p class="unknown">Waiting for the run to be created. This page checks every second.</p>
 {% else %}
   {% set r = v.run %}
   {% set s = r.get("subject") or {} %}
@@ -21,81 +18,74 @@
   {% set checks = p.get("checks") or [] %}
   {% set mand = p.get("mandatory_ids") or [] %}
   {% set jobs = (v.receipt or {}).get("jobs") or [] %}
-  {% set ns = namespace(have=[], cells=0, last="") %}
-  {% for row in v.grid %}{% set ns.have = ns.have + [row.check_id.split(".")[0]] %}{% set ns.cells = ns.cells + row.cells|length %}{% endfor %}
+  {% set ns = namespace(have=[], cells=0, last="", hlfam="") %}
+  {% for row in v.grid %}{% set ns.have = ns.have + [row.check_id.split(".")[0]] %}{% set ns.cells = ns.cells + row.cells|length %}{% if hl and row.check_id == hl.check_id %}{% set ns.hlfam = row.family %}{% endif %}{% endfor %}
 
-  <header class="page-head">
-    <div>
-      <h1>{{ (s.get("title") or "")|trim or "Sentinel run" }}</h1>
-      <p class="meta">
-        {%- if s.get("url") %}<a href="{{ s.url }}">{{ s.get("repo") }} PR #{{ s.get("pr") }}</a>{% else %}{{ s.get("repo") or "unknown repo" }}{% endif -%}
-        {%- if s.get("base_sha") %}, base <span class="mono">{{ s.base_sha[:8] }}</span> to head <span class="mono">{{ (s.get("head_sha") or "unknown")[:8] }}</span>{% endif -%}
-        {%- if r.get("case_id") %}, case <a class="mono" href="/cases/{{ r.case_id }}">{{ r.case_id }}</a>{% endif -%}
-      </p>
-      <p class="meta"><span class="mono">{{ r.id }}</span>, started <span class="num">{{ (r.get("created_at") or "")[:19]|replace("T", " ") }}</span> UTC{% if s.get("harness") %}, <span class="mono">{{ s.harness }}</span>{% endif %}</p>
-    </div>
-    <p class="state state-{{ r.get('status') or 'unknown' }}">
-      {% if done %}Done{% if r.get("wall_ms") is not none %} in <span class="num">{{ "%.1f"|format(r.wall_ms / 1000) }}</span> s{% endif %}
-      {% elif r.get("status") == "running" %}Running: <span class="num">{{ ns.cells }}</span> cells in
-      {% else %}{{ (r.get("status") or "starting")|capitalize }}{% endif %}
+  <header class="run-head">
+    <h1>{{ (s.get("title") or "")|trim or "Sentinel run" }}</h1>
+    <p class="run-meta">
+      {%- if s.get("url") %}<a href="{{ s.url }}">{{ s.get("repo") }} PR #{{ s.get("pr") }}</a>{% else %}{{ s.get("repo") or "unknown repo" }}{% endif -%}
+      {%- if r.get("case_id") %}<span class="sep" aria-hidden="true"></span><a href="/cases/{{ r.case_id }}">case {{ r.case_id }}</a>{% endif -%}
+    </p>
+    <p class="run-status{% if not done %} is-live{% endif %}">
+      {% if done %}Finished in&nbsp;<span class="num">{{ "%.1f"|format((r.wall_ms or 0) / 1000) }}</span>&nbsp;s
+      {%- elif not p %}<span class="pulse" aria-hidden="true"></span>Planning: {{ p.get("model") or "the model on Vultr" }} is reading the diff
+      {% else %}<span class="pulse" aria-hidden="true"></span>Running the checks in gVisor on {{ v.labels|length }} versions of the code
+      {% endif %}
     </p>
   </header>
 
-  <section class="plan" aria-labelledby="plan-h">
-    <h2 id="plan-h">Plan</h2>
-    {% if not p %}
-    <p class="unknown">The planner is reading the diff.</p>
-    {% else %}
-    {% if p.get("source") == "prepass_default" %}<p class="warn">planner unavailable: mandatory checks only</p>{% endif %}
-    <dl class="plan-facts">
-      <div><dt>Model</dt><dd class="mono">{{ p.get("model") or "none" }}</dd></div>
-      <div><dt>Latency</dt><dd>{% if p.get("latency_ms") is not none %}<span class="num">{{ "%.1f"|format(p.latency_ms / 1000) }}</span> s{% else %}<span class="unknown">n/a</span>{% endif %}</dd></div>
-      <div><dt>Source</dt><dd>{{ SOURCE.get(p.get("source"), p.get("source") or "unknown") }}</dd></div>
-      <div><dt>Families</dt><dd>{{ checks|map(attribute="family")|unique|join(", ") or "none" }}</dd></div>
-      <div><dt>Checks</dt><dd><span class="num">{{ mand|length }}</span> mandatory, <span class="num">{{ checks|length - (checks|selectattr("id", "in", mand)|list|length) }}</span> added{% if p.get("rejected") %}, <span class="num">{{ p.rejected|length }}</span> rejected{% endif %}</dd></div>
-    </dl>
-    {% if p.get("summary") %}<details><summary>What the planner read in the diff</summary><p>{{ p.summary }}</p></details>{% endif %}
-    {% if p.get("rejected") %}<details><summary>Rejected planner checks (<span class="num">{{ p.rejected|length }}</span>)</summary><ul>{% for x in p.rejected %}<li><span class="mono">{{ x.get("id") }}</span>: {{ (x.get("errors") or [])|join("; ") }}</li>{% endfor %}</ul></details>{% endif %}
-    {% if p.get("errors") %}<details><summary>Planner errors (<span class="num">{{ p.errors|length }}</span>)</summary><ul>{% for e in p.errors %}<li>{{ e }}</li>{% endfor %}</ul></details>{% endif %}
+  <ol class="commits" aria-label="The same checks on each version of the code">
+    {% for l in v.labels %}
+    {% set cs = namespace(fail=0, ok=0, err=0) %}
+    {% for row in v.grid %}{% set c = row.cells.get(l) %}{% if c %}{% if c.status == "FAIL" %}{% set cs.fail = cs.fail + 1 %}{% elif c.status == "PASS" %}{% set cs.ok = cs.ok + 1 %}{% else %}{% set cs.err = cs.err + 1 %}{% endif %}{% endif %}{% endfor %}
+    {% set js = jobs|selectattr("job_id", "equalto", r.id ~ "-" ~ l)|list %}
+    <li class="commit {% if cs.fail %}is-broken{% elif cs.ok %}is-holds{% elif cs.err %}is-error{% else %}is-waiting{% endif %}">
+      <span class="commit-name">{{ NAME.get(l, l) }}</span>
+      <span class="commit-state">{% if cs.fail %}Breaks the math{% elif cs.ok %}Math holds{% elif cs.err %}Could not run{% else %}Waiting{% endif %}</span>
+      <span class="commit-sub">{% if cs.fail or cs.ok %}<span class="num">{{ cs.fail }}</span> of <span class="num">{{ cs.fail + cs.ok + cs.err }}</span> checks fail{% else %}&nbsp;{% endif %}{% if js %} · gVisor, <span class="num">{{ "%.1f"|format(js[0].wall_ms / 1000) }}</span> s{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ol>
+
+  {% if done %}
+  {% set vd = r.get("verdict") %}
+  <section class="verdict verdict-{{ (vd or 'none')|lower|replace(' ', '-') }}" aria-label="Verdict">
+    <p class="verdict-word">{% if vd == "BLOCK" %}Blocked{% elif vd == "PASS" %}Passed{% elif vd %}{{ vd|capitalize }}{% else %}No verdict{% endif %}</p>
+    {% if hl %}
+    <p class="verdict-nums"><span class="got num">{{ hl.got }}</span><span class="must-lbl">must be</span><span class="want num">{{ hl.must }}</span></p>
+    <p class="verdict-rule">{{ RULE.get(ns.hlfam, "A rule the code must obey broke") }}{% if hl.get("context") %} <span class="ctx">({{ hl.context }})</span>{% endif %}. It held before the PR and holds again after my fix.</p>
+    {% elif r.get("reason") %}
+    <p class="verdict-rule">{{ r.reason }}</p>
     {% endif %}
   </section>
+  {% endif %}
 
-  <section aria-labelledby="grid-h">
-    <h2 id="grid-h">Checks on each commit</h2>
-    <div class="scroll" tabindex="0" role="region" aria-label="Checks by commit">
+  <section class="checks" aria-labelledby="checks-h">
+    <h2 id="checks-h">What was checked</h2>
+    <div class="scroll" tabindex="0" role="region" aria-label="Checks by version">
     <table class="grid">
       <thead><tr>
-        <th scope="col" class="chk">Check</th>
-        {% for l in v.labels %}
-        <th scope="col" class="commit"><span class="cn">{{ NAME.get(l, l) }}</span> <span class="cl mono">{{ l }}</span>
-          {% set js = jobs|selectattr("job_id", "equalto", r.id ~ "-" ~ l)|list %}
-          {% if js %}<span class="sbx mono">{{ v.receipt.runtime or "sandbox" }}, exit {{ js[0].exit }}, {{ js[0].wall_ms }} ms</span>{% endif %}
-        </th>
-        {% endfor %}
-        <th scope="col" class="dec">Decision</th>
+        <th scope="col" class="chk">Rule</th>
+        {% for l in v.labels %}<th scope="col" class="col-commit">{{ NAME.get(l, l) }}</th>{% endfor %}
+        <th scope="col" class="dec">Result</th>
       </tr></thead>
       <tbody>
       {% for row in (v.grid|selectattr("mandatory")|list) + (v.grid|rejectattr("mandatory")|list) %}
-        {% set base = row.check_id.split(".")[0] %}
+        {% set ctxs = [] %}{% for l in v.labels %}{% set cc = row.cells.get(l) %}{% if cc and cc.status != "ERROR" and ": " in (cc.detail or "").split(";")[0] %}{% set _ = ctxs.append(cc.detail.split(";")[0].rsplit(": ", 1)[0]) %}{% endif %}{% endfor %}
         <tr{% if hl and row.check_id == hl.check_id %} class="hl"{% endif %}>
           <th scope="row" class="chk">
-            <span class="cid mono">{{ row.check_id }}</span> <span class="fam">{{ row.family }}</span>
-            <span class="origin{% if row.mandatory %} mand{% endif %}">{{ "mandatory (prepass)" if row.mandatory else "added by planner" }}</span>
-            {% set ctxs = [] %}{% for l in v.labels %}{% set cc = row.cells.get(l) %}{% if cc and cc.status != "ERROR" and ": " in (cc.detail or "").split(";")[0] %}{% set _ = ctxs.append(cc.detail.split(";")[0].rsplit(": ", 1)[0]) %}{% endif %}{% endfor %}
-            {% if ctxs %}<span class="ctx mono">{{ ctxs[0] }}</span>{% endif %}
-            {% if row.why and base != ns.last %}<span class="why" title="{{ row.why }}">{{ row.why }}</span>{% endif %}
-            {% set ns.last = base %}
+            <span class="rule">{{ RULE.get(row.family, row.family) }}</span>
+            <span class="rule-sub">{% if ctxs %}<span class="mono">{{ ctxs[0] }}</span> · {% endif %}{{ "built-in" if row.mandatory else "chosen by the planner" }}</span>
           </th>
           {% for l in v.labels %}{% set c = row.cells.get(l) %}
           <td>
-            {% if c %}{% set st = c.status or "ERROR" %}{% set m = c.metric %}{% set t = c.threshold %}
-            {% set d = (c.detail or "").split(";")[0] %}
-            <div class="cell cell-{{ st|lower }}"{% if c.detail %} title="{{ c.detail }}"{% endif %}>
-              <span class="sw">{{ st }}</span>
-              {% if d %}<span class="fact mono">{{ (d if st == "ERROR" else d.rsplit(": ", 1)[-1])|truncate(80, true) }}</span>{% endif %}
-              {% if m is number and t is number %}<span class="gap mono">gap {{ num(m) }} {{ "within" if m <= t else "over" }} tol {{ num(t) }}</span>{% endif %}
-            </div>
-            {% else %}<div class="cell cell-wait">{{ "no result" if done else "waiting" }}</div>{% endif %}
+            {% if c %}{% set st = c.status or "ERROR" %}{% set d = (c.detail or "").split(";")[0] %}{% set m = c.metric %}{% set t = c.threshold %}
+            <span class="res res-{{ st|lower }}" title="{{ c.detail or '' }}{% if m is number and t is number %} (gap {{ num(m) }}, tolerance {{ num(t) }}){% endif %}">
+              <span class="res-st">{{ {"PASS": "holds", "FAIL": "breaks", "ERROR": "error"}.get(st, st|lower) }}</span>
+              {% if d %}<span class="res-val mono">{{ (d if st == "ERROR" else d.rsplit(": ", 1)[-1])|replace("pieces give ", "")|replace(", whole gives ", " vs ")|replace("got ", "")|replace(", must be ", " vs ")|truncate(40, true) }}</span>{% endif %}
+            </span>
+            {% else %}<span class="res res-wait">{{ "no result" if done else "waiting" }}</span>{% endif %}
           </td>
           {% endfor %}
           <td class="dec">{% if row.decision %}<span class="d-{{ row.decision }}">{{ DECISION.get(row.decision, row.decision) }}</span>{% else %}<span class="unknown">{{ "n/a" if done else "waiting" }}</span>{% endif %}</td>
@@ -104,48 +94,47 @@
       {% if not done %}
         {% for c in checks if c.get("id") not in ns.have %}
         <tr class="pending">
-          <th scope="row" class="chk">
-            <span class="cid mono">{{ c.get("id") }}</span> <span class="fam">{{ c.get("family") }}</span>
-            <span class="origin{% if c.get('id') in mand %} mand{% endif %}">{{ "mandatory (prepass)" if c.get("id") in mand else "added by planner" }}</span>
-            {% if c.get("why") %}<span class="why" title="{{ c.why }}">{{ c.why }}</span>{% endif %}
-          </th>
-          {% for l in v.labels %}<td><div class="cell cell-wait">waiting</div></td>{% endfor %}
+          <th scope="row" class="chk"><span class="rule">{{ RULE.get(c.get("family"), c.get("family")) }}</span><span class="rule-sub">{{ "built-in" if c.get("id") in mand else "chosen by the planner" }}</span></th>
+          {% for l in v.labels %}<td><span class="res res-wait">waiting</span></td>{% endfor %}
           <td class="dec"><span class="unknown">waiting</span></td>
         </tr>
         {% endfor %}
         {% if not v.grid and not checks %}
-        <tr class="pending"><td colspan="{{ v.labels|length + 2 }}"><span class="unknown">The planner is choosing checks.</span></td></tr>
+        <tr class="pending"><td colspan="{{ v.labels|length + 2 }}"><span class="unknown">The planner is choosing which rules to check.</span></td></tr>
         {% endif %}
       {% endif %}
       </tbody>
     </table>
     </div>
+    <p class="grid-note">Each result shows the two numbers its rule compares: the pieces vs the whole, or what the code gave vs what it must give. Hover for the exact gap and tolerance.</p>
   </section>
 
-  {% if done %}
-  {% set vd = r.get("verdict") %}
-  <section class="band band-{{ (vd or 'none')|lower|replace(' ', '-') }}" aria-label="Verdict">
-    <p class="band-verdict">{{ vd or "NO VERDICT" }}</p>
-    {% if hl %}
-    <p class="band-nums"><span class="num">{{ hl.got }}</span> <span class="lbl">must be</span> <span class="num">{{ hl.must }}</span></p>
-    <p class="band-ctx">{% if hl.get("context") %}{{ hl.context }}, {% endif %}check <span class="mono">{{ hl.check_id }}</span></p>
-    {% endif %}
-    {% if r.get("reason") %}<p class="band-reason">{{ r.reason }}</p>{% endif %}
-  </section>
-  {% endif %}
-
-  <section class="receipt" aria-labelledby="rec-h">
-    <h2 id="rec-h">Receipt</h2>
-    {% if v.receipt %}
-    <dl class="facts">
-      <div><dt>SHA-256</dt><dd class="mono hash">{{ v.receipt.sha256 }}</dd></div>
-      <div><dt>Signing key</dt><dd class="mono">{{ v.receipt.key_id }}</dd></div>
-      <div><dt>Sandbox</dt><dd><span class="mono">{{ v.receipt.runtime or "unknown" }}</span>, <span class="num">{{ jobs|length }}</span> jobs</dd></div>
-    </dl>
-    <p><a href="/runs/{{ r.id }}/receipt.json">Open receipt.json</a></p>
-    {% else %}
-    <p class="unknown">The receipt is signed when the run finishes.</p>
-    {% endif %}
+  <section class="fine" aria-label="Plan and receipt">
+    <details>
+      <summary>How the plan was made</summary>
+      {% if p %}
+      <dl class="kv">
+        <div><dt>Model</dt><dd class="mono">{{ p.get("model") or "none" }} on Vultr Serverless Inference</dd></div>
+        <div><dt>Planning time</dt><dd>{% if p.get("latency_ms") is not none %}<span class="num">{{ "%.1f"|format(p.latency_ms / 1000) }}</span> s{% else %}n/a{% endif %}</dd></div>
+        <div><dt>Source</dt><dd>{{ SOURCE.get(p.get("source"), p.get("source") or "unknown") }}</dd></div>
+        <div><dt>Checks</dt><dd><span class="num">{{ mand|length }}</span> built-in, <span class="num">{{ checks|length - (checks|selectattr("id", "in", mand)|list|length) }}</span> chosen by the planner{% if p.get("rejected") %}, <span class="num">{{ p.rejected|length }}</span> rejected by the validator{% endif %}</dd></div>
+      </dl>
+      {% if p.get("summary") %}<p class="fine-text">{{ p.summary }}</p>{% endif %}
+      {% if p.get("rejected") %}<ul class="fine-list">{% for x in p.rejected %}<li><span class="mono">{{ x.get("id") }}</span>: {{ (x.get("errors") or [])|join("; ") }}</li>{% endfor %}</ul>{% endif %}
+      {% else %}<p class="fine-text">The planner is still reading the diff.</p>{% endif %}
+    </details>
+    <details>
+      <summary>Signed receipt</summary>
+      {% if v.receipt %}
+      <dl class="kv">
+        <div><dt>SHA-256</dt><dd class="mono hash">{{ v.receipt.sha256 }}</dd></div>
+        <div><dt>Signing key</dt><dd class="mono">{{ v.receipt.key_id }}</dd></div>
+        <div><dt>Sandbox</dt><dd><span class="mono">{{ v.receipt.runtime or "unknown" }}</span>, <span class="num">{{ jobs|length }}</span> jobs</dd></div>
+        <div><dt>Run</dt><dd class="mono">{{ r.id }}{% if s.get("harness") %}, {{ s.harness }}{% endif %}</dd></div>
+      </dl>
+      {% else %}<p class="fine-text">The receipt is signed when the run finishes.</p>{% endif %}
+    </details>
+    {% if v.receipt %}<a class="receipt-link" href="/runs/{{ r.id }}/receipt.json">Download receipt.json</a>{% endif %}
   </section>
 {% endif %}
 </div>

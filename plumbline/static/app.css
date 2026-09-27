@@ -15,8 +15,8 @@
   --red: #B3261E;
   --red-tint: rgba(179, 38, 30, 0.08);
   --green: #0A6B4B;
-  --blue: #1D4ED8;
-  --blue-dark: #1A40B0;
+  --blue: #2B4C7E;
+  --blue-dark: #213B63;
   --sans: "Plex Sans", "IBM Plex Sans", system-ui, sans-serif;
   --mono: "Plex Mono", "IBM Plex Mono", ui-monospace, monospace;
   --huge: clamp(3rem, 14vw, 6rem);
@@ -39,7 +39,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-::selection { background: rgba(29, 78, 216, 0.2); color: var(--ink); }
+::selection { background: rgba(43, 76, 126, 0.18); color: var(--ink); }
 :focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; border-radius: 2px; }
 ::-webkit-scrollbar { width: 12px; height: 12px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -74,7 +74,7 @@ td, th { font-feature-settings: "tnum"; }
 .top nav a[aria-current="page"] { color: var(--ink); font-weight: 500; text-decoration: underline; text-decoration-thickness: 2px; }
 .chip {
   font-size: 1rem; font-weight: 500; color: var(--blue);
-  border: 1.5px solid var(--blue); border-radius: 999px; padding: 0.25rem 0.875rem; white-space: nowrap;
+  border: 1px solid var(--line-2); border-radius: 999px; padding: 0.25rem 0.875rem; white-space: nowrap;
 }
 
 main { max-width: 1480px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 3rem) 5rem; }
@@ -302,4 +302,93 @@ html.stage .arena-controls .keys, html.stage .diff-box { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .band { animation: none; }
   .arena-card { transition: none; }
+}
+
+
+/* Run page, verdict first. Calm: hairlines, one tint for failure, the verdict wipe is the only motion. */
+.run-head { margin-top: 2.5rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+.run-head h1 { font-size: 2.25rem; letter-spacing: -0.015em; overflow-wrap: anywhere; }
+.run-meta { color: var(--ink-2); font-size: 1.125rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0; }
+.run-meta a { color: var(--ink-2); }
+.run-meta a:hover { color: var(--ink); }
+.sep { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--line-2); margin: 0 0.75rem; }
+.run-status { font-size: 1.125rem; color: var(--gray); margin-top: 0.25rem; }
+.run-status.is-live { color: var(--blue); }
+.pulse { display: inline-block; vertical-align: middle; margin: -2px 0.625rem 0 0.125rem; width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(43, 76, 126, 0.35); } 100% { box-shadow: 0 0 0 10px rgba(43, 76, 126, 0); } }
+
+.commits { list-style: none; margin: 2.25rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.commit { display: grid; gap: 0.25rem; padding: 1.25rem 1.5rem 1.375rem; position: relative; transition: background-color 400ms cubic-bezier(0.16, 1, 0.3, 1); }
+.commit + .commit { border-left: 1px solid var(--line); }
+.commit::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 3px; background: transparent; transition: background-color 400ms cubic-bezier(0.16, 1, 0.3, 1); }
+.commit-name { font-size: 1.0625rem; color: var(--ink-2); }
+.commit-state { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.005em; }
+.commit-sub { font-size: 0.9375rem; color: var(--gray); }
+.commit.is-holds .commit-state { color: var(--green); }
+.commit.is-holds::before { background: var(--green); }
+.commit.is-broken { background: rgba(179, 38, 30, 0.05); }
+.commit.is-broken .commit-state { color: var(--red); }
+.commit.is-broken::before { background: var(--red); }
+.commit.is-error .commit-state { color: var(--gray); }
+.commit.is-waiting .commit-state { color: var(--line-2); }
+
+.verdict { margin-top: 2.5rem; padding: 2rem 2.25rem 2.25rem; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); box-shadow: 0 1px 2px rgba(21, 23, 26, 0.04), 0 12px 32px -12px rgba(21, 23, 26, 0.12); animation: wipe 450ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.verdict-word { font-size: 1.125rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.verdict-block .verdict-word { color: var(--red); }
+.verdict-pass .verdict-word { color: var(--green); }
+.verdict-not-covered .verdict-word, .verdict-none .verdict-word { color: var(--gray); }
+.verdict-nums { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 1.25rem; margin-top: 0.5rem; }
+.verdict-nums .num { font: 500 clamp(3rem, 9vw, 5.5rem)/1 var(--mono); letter-spacing: -0.03em; font-feature-settings: "tnum"; }
+.verdict-nums .got { color: var(--red); }
+.verdict-nums .want { color: var(--ink); }
+.must-lbl { font-size: 1.5rem; color: var(--gray); }
+.verdict-rule { font-size: 1.25rem; line-height: 1.5; color: var(--ink-2); margin-top: 1rem; max-width: 62ch; }
+.verdict-rule .ctx { font-family: var(--mono); font-size: 0.95em; color: var(--ink); overflow-wrap: anywhere; }
+
+.checks { margin-top: 3.5rem; }
+.checks h2 { font-size: 1.375rem; margin-bottom: 0.75rem; }
+.checks .grid { font-size: 1rem; }
+.checks .grid thead th { font-size: 0.9375rem; font-weight: 500; color: var(--gray); border-bottom: 1px solid var(--line-2); padding-block: 0.625rem; }
+.checks .grid th.chk { min-width: 17rem; max-width: 26rem; font-weight: 400; }
+.checks .grid td, .checks .grid th { padding: 0.875rem 0.75rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.checks .grid tbody tr { transition: background-color 200ms ease-out; }
+.checks .grid tbody tr:hover > * { background: #F1EEE7; }
+.checks .grid tr.hl > * { background: rgba(179, 38, 30, 0.045); }
+.rule { display: block; color: var(--ink); font-weight: 500; line-height: 1.35; }
+.rule-sub { display: block; font-size: 0.9375rem; color: var(--gray); margin-top: 0.25rem; }
+.rule-sub .mono { color: var(--ink-2); font-size: 0.9rem; }
+.res { display: inline-flex; flex-direction: column; gap: 0.125rem; cursor: default; }
+.res-st { font-size: 0.9375rem; font-weight: 600; }
+.res-val { font-size: 0.9375rem; color: var(--ink-2); white-space: nowrap; }
+.res-pass .res-st { color: var(--green); }
+.res-fail .res-st, .res-fail .res-val { color: var(--red); }
+.res-error .res-st { color: var(--gray); }
+.res-wait { color: var(--line-2); font-size: 0.9375rem; }
+.checks .dec { min-width: 9rem; font-size: 0.9375rem; }
+.grid-note { font-size: 0.9375rem; color: var(--gray); margin-top: 0.875rem; max-width: 75ch; }
+
+.fine { margin-top: 3rem; display: grid; gap: 0.25rem; }
+.fine details { margin: 0; border-top: 1px solid var(--line); padding-block: 0.875rem; font-size: 1.0625rem; }
+.fine details:last-of-type { border-bottom: 1px solid var(--line); }
+.fine summary { color: var(--ink-2); font-weight: 500; list-style: none; display: flex; align-items: center; gap: 0.625rem; }
+.fine summary::-webkit-details-marker { display: none; }
+.fine summary::before { content: ""; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 200ms ease-out; }
+.fine details[open] summary::before { transform: rotate(45deg); }
+.fine summary:hover { color: var(--ink); }
+.kv { margin: 0.875rem 0 0; display: grid; gap: 0.5rem; }
+.kv > div { display: grid; grid-template-columns: 10rem minmax(0, 1fr); gap: 1rem; }
+.kv dt { color: var(--gray); font-size: 0.9375rem; }
+.kv dd { margin: 0; overflow-wrap: anywhere; font-size: 0.9375rem; }
+.fine-text { font-size: 0.9375rem; color: var(--ink-2); max-width: 75ch; margin-top: 0.875rem; }
+.fine-list { font-size: 0.9375rem; color: var(--ink-2); margin: 0.625rem 0 0; padding-left: 1.25rem; }
+.receipt-link { justify-self: start; margin-top: 1rem; font-weight: 500; }
+
+@media (max-width: 760px) {
+  .commit + .commit { border-left: 0; border-top: 1px solid var(--line); }
+  .verdict { padding: 1.5rem; }
+  .kv > div { grid-template-columns: 1fr; gap: 0.125rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .verdict, .pulse { animation: none; }
+  .commit, .commit::before { transition: none; }
 }
