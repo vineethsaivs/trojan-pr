@@ -1,0 +1,13 @@
+[Unit]
+Description=plumbline sandboxd (gVisor job runner, NetBird IP only)
+After=netbird.service docker.service
+Wants=netbird.service docker.service
+
+[Service]
+EnvironmentFile=/etc/plumbline/env
+ExecStart=/bin/sh -c '/opt/sbx/bin/uvicorn sandboxd.server:app --app-dir /opt/plumbline --host $$(netbird status --ipv4) --port 7070'
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
