@@ -28,7 +28,7 @@
     clearInterval(tick);
     if (t) { t.hidden = true; t.classList.remove("done"); }
     var band = on && document.querySelector(".is-trojan .card-band");
-    if (band) band.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    if (band) band.scrollIntoView({ block: "center" });   // instant: the band's wipe is the motion
   }
   function timer() {
     var t = document.getElementById("timer"), n = 5;
